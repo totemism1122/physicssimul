@@ -1,0 +1,100 @@
+/* First screen and unit list. Lengths are written in design pixels times --u, so the layout keeps its
+   proportions on any screen: wide layouts are drawn on a 1920 x 1080 sheet, tall ones on 360 x 660. */
+
+/* ---------- first screen ---------- */
+.first { --u: min(calc(100vw / 1920), calc(100vh / 1080)); }
+@supports (height: 100dvh) { .first { --u: min(calc(100vw / 1920), calc(100dvh / 1080)); } }
+.first-in { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: calc(26 * var(--u)); }
+.logo { margin: 0 0 calc(133 * var(--u)); font: 400 calc(133 * var(--u)) / 1 var(--title); letter-spacing: 0.02em; }
+.subjects { display: flex; gap: calc(78 * var(--u)); }
+.subject { display: flex; flex-direction: column; align-items: center; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.busts { position: relative; display: block; width: calc(432 * var(--u)); aspect-ratio: 432 / 390; overflow: hidden;
+  transform-origin: 50% 100%; opacity: 0; transition: transform 0.28s ease, opacity 0.3s ease; }
+.busts.in { opacity: 1; }
+.busts img { position: absolute; height: auto; pointer-events: none; }
+.rule { width: calc(336 * var(--u)); height: 1px; background: rgba(243, 238, 223, 0.38); }
+.subject-name { margin-top: calc(26 * var(--u)); font-size: max(13px, calc(38 * var(--u))); font-weight: 700; line-height: 1.4; letter-spacing: 0.01em; }
+.subject.pressed .busts { transform: scale(1.05); }
+@media (hover: hover) { .subject:hover .busts { transform: scale(1.05); } }
+
+@media (max-aspect-ratio: 4/5) {   /* tall screens: three horizontal strips */
+  .first { --u: min(calc(100vw / 360), calc(100vh / 660)); --spare: calc(100vh - 660 * var(--u)); }
+  @supports (height: 100dvh) { .first { --u: min(calc(100vw / 360), calc(100dvh / 660)); --spare: calc(100dvh - 660 * var(--u)); } }
+  /* on a 360 x 660 screen this fills the height exactly; any spare height is shared out between the rows */
+  .first-in { padding: calc(42 * var(--u)) 0 calc(25 * var(--u)); }
+  .logo { margin: 0 0 calc(49 * var(--u) + var(--spare) / 8); font-size: calc(60 * var(--u)); }
+  .subjects { flex-direction: column; gap: calc(35 * var(--u) + var(--spare) / 4); }
+  .subject { flex-direction: row; align-items: flex-end; justify-content: space-between; width: calc(316 * var(--u));
+    border-bottom: 1px solid rgba(243, 238, 223, 0.45); }
+  .busts { width: calc(151 * var(--u)); transform-origin: 0 100%; }
+  .rule { display: none; }
+  .subject-name { margin: 0 0 calc(11 * var(--u)); font-size: calc(22.5 * var(--u)); }
+}
+
+/* ---------- unit list (also the base for tall and narrow screens: cards in one column) ---------- */
+.units {
+  --u: clamp(0.9px, min(calc(100vw / 360), calc(100vh / 560)), 1.6px);
+  --back-x: 16; --back-y: 26; --back-size: 21;
+  --title-top: 66; --title-size: 34; --hint-size: 12.5; --hint-gap: 2;
+  --parts-top: 18; --part-w: 328; --part-gap: 12; --part-h: 60; --part-r: 16; --part-pad: 12; --part-pad-r: 20; --body-pad: 18;
+  --roman-size: 22; --roman-w: 34; --roman-gap: 11; --name-size: 20; --count-size: 12.5; --arrow: 13;
+  --chapter-size: 15; --chapter-top: 20; --sim-h: 44; --sim-pad: 11; --num-size: 12.5; --num-w: 27; --sim-size: 17; --sim-r: 10; --list-pad: 10;
+  padding-bottom: calc(40 * var(--u));
+}
+@media (min-width: 1100px) and (min-aspect-ratio: 4/5) {   /* wide screens: three cards side by side */
+  .units {
+    --u: clamp(0.58px, min(calc(100vw / 1920), calc(100vh / 1080)), 2.2px);
+    --back-x: 66; --back-y: 54; --back-size: 41;
+    --title-top: 112; --title-size: 56; --hint-size: 20; --hint-gap: 6;
+    --parts-top: 54; --part-w: 500; --part-gap: 40; --part-h: 96; --part-r: 22; --part-pad: 21; --part-pad-r: 38; --body-pad: 34;
+    --roman-size: 36; --roman-w: 60; --roman-gap: 12; --name-size: 30; --count-size: 18; --arrow: 20;
+    --chapter-size: 20; --chapter-top: 36; --sim-h: 52; --sim-pad: 20; --num-size: 18; --num-w: 44; --sim-size: 23; --sim-r: 12; --list-pad: 20;
+  }
+  .units .parts { flex-direction: row; align-items: flex-start; justify-content: center; }
+}
+
+.back { position: absolute; left: calc(var(--back-x) * var(--u)); top: calc(var(--back-y) * var(--u)); display: flex; align-items: center;
+  gap: calc(var(--back-size) * 0.6 * var(--u)); font: 400 calc(var(--back-size) * var(--u)) / 1.2 var(--title); letter-spacing: 0.03em; }
+.back svg { height: 0.72em; width: auto; }
+.units-head { text-align: center; padding-top: calc(var(--title-top) * var(--u)); }
+.units-head h1 { margin: 0; font-size: calc(var(--title-size) * var(--u)); font-weight: 700; line-height: 1.35; }
+.units-head p { margin: calc(var(--hint-gap) * var(--u)) 0 0; font-size: calc(var(--hint-size) * var(--u)); color: var(--ink-soft); }
+
+.parts { display: flex; flex-direction: column; align-items: center; gap: calc(var(--part-gap) * var(--u)); margin-top: calc(var(--parts-top) * var(--u)); }
+.part { width: min(calc(var(--part-w) * var(--u)), calc(100vw - 24px)); background: var(--card); border: 1.5px solid var(--line);
+  border-radius: calc(var(--part-r) * var(--u)); transition: opacity 0.3s ease; }
+.parts.has-open .part:not(.open) { opacity: 0.42; }
+.part-head { display: flex; align-items: center; width: 100%; height: calc(var(--part-h) * var(--u)); padding: 0 calc(var(--part-pad-r) * var(--u)) 0 calc(var(--part-pad) * var(--u));
+  background: none; border: 0; border-radius: inherit; cursor: pointer; text-align: left; }
+.roman { flex: none; width: calc(var(--roman-w) * var(--u)); font-size: calc(var(--roman-size) * var(--u)); color: var(--gold); text-align: center;
+  margin-right: calc(var(--roman-gap) * var(--u)); }
+.part-name { font-size: calc(var(--name-size) * var(--u)); font-weight: 700; white-space: nowrap; }
+.count { margin-left: auto; font-size: calc(var(--count-size) * var(--u)); color: var(--ink-soft); }
+.arrow { flex: none; height: calc(var(--arrow) * var(--u)); width: auto; margin-left: calc(var(--arrow) * 1.4 * var(--u)); transition: transform 0.3s ease; }
+.part.open .arrow { transform: rotate(90deg); }
+
+/* opening: the body grows, then the rows appear one after another from the top */
+.part-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.32s ease; }
+.part.open .part-body { grid-template-rows: 1fr; }
+.part-body-in { overflow: hidden; min-height: 0; }
+.part-list { margin: 0 calc(var(--list-pad) * var(--u)); padding-bottom: calc(var(--body-pad) * var(--u)); border-top: 1.5px solid var(--line); }
+.part-list ul { list-style: none; margin: 0; padding: 0; }
+.row { opacity: 0; transform: translateY(calc(-8 * var(--u))); transition: opacity 0.15s ease, transform 0.15s ease; }
+.part.open .row { opacity: 1; transform: none; transition: opacity 0.3s ease, transform 0.3s ease; transition-delay: calc(var(--i) * 45ms + 120ms); }
+.chapter { margin: 0; padding: calc(var(--chapter-top) * var(--u)) calc(var(--sim-pad) * 0.7 * var(--u)) 0;
+  font-size: calc(var(--chapter-size) * var(--u)); font-weight: 700; line-height: 1.1; color: var(--gold); }
+.sim { display: flex; align-items: center; height: calc(var(--sim-h) * var(--u)); padding: 0 calc(var(--sim-pad) * var(--u));
+  border: 1.5px solid transparent; border-radius: calc(var(--sim-r) * var(--u)); }
+.num { flex: none; width: calc(var(--num-w) * var(--u)); font-size: calc(var(--num-size) * var(--u)); color: var(--ink-soft); }
+.sim-name { font-size: calc(var(--sim-size) * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sim.off { opacity: 0.4; }
+a.sim:active, a.sim:focus-visible { background: var(--card-deep); border-color: rgba(243, 238, 223, 0.14); }
+a.sim:active .sim-name, a.sim:focus-visible .sim-name { color: var(--gold); font-weight: 700; }
+@media (hover: hover) {
+  a.sim:hover { background: var(--card-deep); border-color: rgba(243, 238, 223, 0.14); }
+  a.sim:hover .sim-name { color: var(--gold); font-weight: 700; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .busts, .arrow, .part-body, .row, .part.open .row { transition-duration: 0.01s; transition-delay: 0s; }
+}

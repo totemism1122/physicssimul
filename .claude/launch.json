@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "preview", "runtimeExecutable": "/usr/local/bin/node", "runtimeArgs": ["tools/serve.mjs"], "port": 8013 }
+  ]
+}

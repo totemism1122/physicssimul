@@ -1,0 +1,36 @@
+/* Colours, fonts, the space background and the dissolve shared by every screen. */
+@font-face { font-family: "IM Fell English SC"; src: url("../assets/fonts/IMFellEnglishSC-sub.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Noto Serif KR"; font-weight: 400; src: url("../assets/fonts/NotoSerifKR-Regular-sub.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Noto Serif KR"; font-weight: 700; src: url("../assets/fonts/NotoSerifKR-Bold-sub.woff2") format("woff2"); font-display: swap; }
+
+:root {
+  --ink: #f3eedf;                         /* text */
+  --ink-soft: rgba(243, 238, 223, 0.6);   /* secondary text */
+  --gold: #e3c26b;                        /* emphasis */
+  --line: rgba(243, 238, 223, 0.24);      /* borders */
+  --card: rgba(22, 26, 42, 0.62);         /* dark translucent surfaces */
+  --card-deep: rgba(11, 13, 22, 0.82);    /* selected: darker, less saturated */
+  --serif: "Noto Serif KR", "AppleMyungjo", "Nanum Myeongjo", "Batang", serif;
+  --title: "IM Fell English SC", "Times New Roman", serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  color: var(--ink); font-family: var(--serif);
+  background:
+    radial-gradient(ellipse 55% 50% at 27% 34%, rgba(92, 88, 138, 0.42), transparent 70%),
+    radial-gradient(ellipse 45% 40% at 74% 74%, rgba(64, 92, 112, 0.26), transparent 70%),
+    #1e2237;
+  -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+}
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+#sky { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#app { position: fixed; inset: 0; }
+
+/* every screen dissolves in and out */
+.screen { position: absolute; inset: 0; opacity: 0; transition: opacity 0.26s ease; overflow: hidden auto; }
+.screen.on { opacity: 1; }

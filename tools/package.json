@@ -1,0 +1,10 @@
+{
+  "name": "physicssimul-tools",
+  "private": true,
+  "type": "module",
+  "description": "제작용 도구. 학생에게 내려가는 파일이 아닙니다.",
+  "devDependencies": {
+    "sharp": "^0.34.0",
+    "subset-font": "^2.4.0"
+  }
+}
