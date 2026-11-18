@@ -83,16 +83,16 @@
 .part.open .row { opacity: 1; transform: none; transition: opacity 0.3s ease, transform 0.3s ease; transition-delay: calc(var(--i) * 45ms + 120ms); }
 .chapter { margin: 0; padding: calc(var(--chapter-top) * var(--u)) calc(var(--sim-pad) * 0.7 * var(--u)) 0;
   font-size: calc(var(--chapter-size) * var(--u)); font-weight: 700; line-height: 1.1; color: var(--gold); }
-.sim { display: flex; align-items: center; height: calc(var(--sim-h) * var(--u)); padding: 0 calc(var(--sim-pad) * var(--u));
+.entry { display: flex; align-items: center; height: calc(var(--sim-h) * var(--u)); padding: 0 calc(var(--sim-pad) * var(--u));
   border: 1.5px solid transparent; border-radius: calc(var(--sim-r) * var(--u)); }
 .num { flex: none; width: calc(var(--num-w) * var(--u)); font-size: calc(var(--num-size) * var(--u)); color: var(--ink-soft); }
-.sim-name { font-size: calc(var(--sim-size) * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sim.off { opacity: 0.4; }
-a.sim:active, a.sim:focus-visible { background: var(--card-deep); border-color: rgba(243, 238, 223, 0.14); }
-a.sim:active .sim-name, a.sim:focus-visible .sim-name { color: var(--gold); font-weight: 700; }
+.entry-name { font-size: calc(var(--sim-size) * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entry.off { opacity: 0.4; }
+a.entry:active, a.entry:focus-visible { background: var(--card-deep); border-color: rgba(243, 238, 223, 0.14); }
+a.entry:active .entry-name, a.entry:focus-visible .entry-name { color: var(--gold); font-weight: 700; }
 @media (hover: hover) {
-  a.sim:hover { background: var(--card-deep); border-color: rgba(243, 238, 223, 0.14); }
-  a.sim:hover .sim-name { color: var(--gold); font-weight: 700; }
+  a.entry:hover { background: var(--card-deep); border-color: rgba(243, 238, 223, 0.14); }
+  a.entry:hover .entry-name { color: var(--gold); font-weight: 700; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,0 +1,175 @@
+/* The simulation screen. Lengths are design pixels of the 1920 x 1080 mockup times --s.
+   The scene is bright, so every label and button sits on a dark translucent surface. */
+.sim {
+  overflow: hidden; background: #efe7d9; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  --u: clamp(0.65px, min(calc(100vw / 1920), calc(100vh / 1080)), 1.6px);
+  --z: 1;                                   /* classroom use enlarges everything */
+  --s: calc(var(--u) * var(--z));
+  --surface: rgba(20, 25, 38, 0.76);        /* bars and panels */
+  --button: rgba(44, 50, 71, 0.82);         /* buttons */
+  --chosen: rgba(13, 15, 23, 0.95);         /* chosen buttons: darker, less saturated */
+  --edge: rgba(243, 238, 223, 0.26);
+  --f-s: max(12px, calc(17 * var(--s)));    /* small labels */
+  --f-m: max(13px, calc(20 * var(--s)));    /* buttons and body text */
+  --f-l: max(14px, calc(24 * var(--s)));    /* panel titles, clock */
+  --f-title: calc(34 * var(--s));
+  --side: calc(46 * var(--s));              /* distance from the screen edges */
+  --fan-x: calc(20 * var(--s));             /* left edge of the fan drawing; the round button's centre is 50 further in */
+  --thumb: max(22px, calc(28 * var(--s)));
+}
+@media (min-width: 701px) and (min-height: 501px) { .sim.use-class { --z: 1.2; } }
+@media (max-width: 700px), (max-height: 500px) {   /* phones: the same drawing, scaled for a small screen */
+  .sim { --u: clamp(0.46px, min(calc(100vw / 620), calc(100vh / 760)), 0.62px); --f-title: max(15px, calc(26 * var(--s)));
+    --side: 10px; --fan-x: calc(2 * var(--s)); }
+}
+
+.sim-scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.sim button { cursor: pointer; }
+.sim button:disabled { cursor: default; opacity: 0.35; }
+
+/* ---------- top: title, play/pause, modes ---------- */
+.topbar { position: absolute; left: 0; right: 0; top: 0; padding: max(8px, calc(34 * var(--s))) var(--side) 0; pointer-events: none;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: start; column-gap: calc(20 * var(--s)); row-gap: 8px; }
+.topbar > * { pointer-events: auto; }
+.title-pill { justify-self: start; max-width: 100%; display: flex; align-items: center; gap: max(6px, calc(14 * var(--s)));
+  padding: max(5px, calc(11 * var(--s))) max(14px, calc(28 * var(--s))) max(5px, calc(11 * var(--s))) max(4px, calc(12 * var(--s)));
+  background: var(--surface); border: 1.5px solid var(--edge); border-radius: max(18px, calc(24 * var(--s))); }
+.up { flex: none; display: grid; place-items: center; width: max(26px, calc(40 * var(--s))); height: max(26px, calc(44 * var(--s))); }
+.up svg { height: max(14px, calc(28 * var(--s))); width: auto; }
+.title-text { min-width: 0; }
+.title-text h1 { margin: 0; font-size: var(--f-title); font-weight: 700; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title-text p { margin: calc(2 * var(--s)) 0 0; font-size: var(--f-s); color: var(--ink-soft); white-space: nowrap; }
+
+.play-pill { display: flex; align-items: center; gap: max(10px, calc(24 * var(--s))); height: max(36px, calc(64 * var(--s)));
+  padding: 0 max(14px, calc(34 * var(--s))) 0 max(3px, calc(7 * var(--s))); background: var(--surface); border: 1.5px solid var(--edge); border-radius: 999px; }
+.play { display: grid; place-items: center; width: max(28px, calc(50 * var(--s))); height: max(28px, calc(50 * var(--s))); padding: 0;
+  background: var(--chosen); border: 1.5px solid var(--edge); border-radius: 50%; }
+.play svg { width: 62%; height: 62%; }
+.play .icon-pause, .play.playing .icon-play { display: none; }
+.play.playing .icon-pause { display: block; }
+.clock { min-width: 3.3em; font-size: var(--f-l); font-variant-numeric: tabular-nums; }
+
+.modes { justify-self: end; position: relative; display: flex; gap: max(6px, calc(14 * var(--s))); }
+.pair { display: flex; gap: 2px; }
+.pair button, .chip, .sub, .view-dirs button { background: var(--button); border: 1.5px solid var(--edge); border-radius: 999px; white-space: nowrap; }
+.pair button { min-height: max(34px, calc(40 * var(--s))); padding: 0 max(7px, calc(18 * var(--s))); font-size: var(--f-s); }
+.sim [aria-pressed="true"], .sim [aria-checked="true"] { color: var(--gold); font-weight: 700; }
+.pair [aria-pressed="true"], .chip[aria-pressed="true"], .sub[aria-pressed="true"], .view-dirs [aria-checked="true"] {
+  background: var(--chosen); border-color: rgba(243, 238, 223, 0.12); }
+/* the mark for anything beyond the curriculum (advanced mode) */
+.beyond-mark { flex: none; display: inline-block; width: 0.42em; height: 0.42em; margin: 0 0.15em 0 0.55em; background: var(--gold); transform: rotate(45deg); }
+.beyond { display: none; position: absolute; right: 0; top: calc(100% + max(6px, calc(10 * var(--s)))); align-items: center; white-space: nowrap;
+  padding: max(3px, calc(5 * var(--s))) max(10px, calc(16 * var(--s))); font-size: var(--f-s); color: var(--gold);
+  background: var(--surface); border: 1px solid rgba(227, 194, 107, 0.5); border-radius: 999px; }
+.beyond .beyond-mark { margin: 0 0.55em 0 0.1em; }
+.sim.adv .beyond { display: flex; }
+
+/* ---------- left: fan menu ---------- */
+.fan { position: absolute; left: 0; top: 50%; width: 0; height: 0; }
+.fan > svg { position: absolute; left: var(--fan-x); top: calc(-262 * var(--s)); width: calc(312 * var(--s)); height: calc(524 * var(--s)); pointer-events: none; overflow: visible; }
+.seg { cursor: pointer; pointer-events: none; opacity: 0; transform: rotate(0deg) scale(0.4);
+  transition: transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease; outline: none; }
+.fan.open .seg { pointer-events: auto; opacity: 1; transform: rotate(var(--a)) scale(1); }
+.fan.open .seg.off { pointer-events: none; opacity: 0.38; }
+.seg path { fill: var(--button); stroke: var(--edge); stroke-width: 1.5; }
+.seg text { fill: var(--ink); font-size: 24px; text-anchor: middle; dominant-baseline: central; transform-origin: 160px 0; transform: rotate(0deg); transition: transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.fan.open .seg text { transform: rotate(calc(-1 * var(--a))); }   /* labels stay level */
+.seg.on path { fill: var(--chosen); stroke: rgba(243, 238, 223, 0.12); }
+.seg.on text { fill: var(--gold); font-weight: 700; }
+.seg:focus-visible path { stroke: var(--gold); stroke-width: 3; }
+.fan-toggle { position: absolute; left: calc(var(--fan-x) + 10 * var(--s)); top: calc(-40 * var(--s)); width: calc(80 * var(--s)); height: calc(80 * var(--s)); padding: 0;
+  display: grid; place-items: center; background: var(--button); border: 1.5px solid var(--edge); border-radius: 50%; }
+.fan-word { font-size: max(12.5px, calc(21 * var(--s))); font-weight: 700; }
+.fan-x { display: none; width: 42%; height: 42%; }
+.fan.open .fan-word { display: none; }
+.fan.open .fan-x { display: block; }
+
+/* ---------- detailed menu ---------- */
+.submenu { position: absolute; left: calc(var(--fan-x) + 312 * var(--s)); display: flex; flex-direction: column; gap: max(8px, calc(12 * var(--s)));
+  opacity: 0; pointer-events: none; transition: opacity 0.22s ease; }
+.submenu.on { opacity: 1; pointer-events: auto; }
+.sub { display: flex; align-items: center; justify-content: center; min-height: max(36px, calc(48 * var(--s))); min-width: max(118px, calc(190 * var(--s)));
+  padding: 0 max(14px, calc(26 * var(--s))); font-size: var(--f-m); }
+.sub.toggle::before { content: ""; flex: none; width: 0.72em; height: 0.72em; margin-right: 0.6em; border: 1.5px solid currentColor; border-radius: 3px; }
+.sub.toggle[aria-pressed="true"]::before { background: var(--gold); box-shadow: inset 0 0 0 2px #0d0f17; }   /* filled box = on */
+
+/* ---------- control panels ---------- */
+.panel-host { position: absolute; width: max(230px, calc(380 * var(--s))); }
+.panel-host:empty { display: none; }
+.panel { padding: max(11px, calc(22 * var(--s))) max(14px, calc(26 * var(--s))); background: var(--surface); border: 1.5px solid var(--edge);
+  border-radius: max(14px, calc(22 * var(--s))); pointer-events: auto; }
+.panel header { display: flex; align-items: baseline; justify-content: space-between; gap: 1em; }
+.panel h3 { margin: 0; font-size: var(--f-l); font-weight: 700; white-space: nowrap; }
+.panel output { font-size: var(--f-l); font-weight: 700; color: var(--gold); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.panel-body { margin: max(6px, calc(14 * var(--s))) 0 max(8px, calc(16 * var(--s))); }
+.panel-body p { margin: 0; font-size: var(--f-m); line-height: 1.6; color: var(--ink); }
+.panel-body canvas { display: block; width: 100%; height: max(104px, calc(190 * var(--s))); font-family: var(--serif); font-size: var(--f-s); }
+.chips { display: flex; flex-wrap: wrap; gap: max(6px, calc(10 * var(--s))); }
+.chip { display: inline-flex; align-items: center; min-height: max(30px, calc(34 * var(--s))); padding: 0 max(12px, calc(20 * var(--s))); font-size: var(--f-s); }
+.chip.option { min-height: max(34px, calc(42 * var(--s))); font-size: var(--f-m); }
+.chip.close { display: none; margin-left: auto; }
+/* a graph keeps its buttons in the top right corner, leaving the height to the plot */
+.panel-graph { position: relative; }
+.panel-graph footer { position: absolute; right: max(14px, calc(26 * var(--s))); top: max(9px, calc(18 * var(--s))); }
+.panel-graph .panel-body { margin-bottom: 0; }
+
+.panel input[type="range"] { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: var(--thumb); margin: 0; background: none; cursor: pointer;
+  --fill: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--p, 0)); }
+.panel input[type="range"]:disabled { opacity: 0.4; cursor: default; }
+.panel input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px;
+  background: linear-gradient(to right, var(--ink) var(--fill), rgba(243, 238, 223, 0.3) var(--fill)); }
+.panel input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: var(--thumb); height: var(--thumb); margin-top: calc(2px - var(--thumb) / 2);
+  background: #0f1118; border: 2.5px solid var(--ink); border-radius: 50%; }
+.panel input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px;
+  background: linear-gradient(to right, var(--ink) var(--fill), rgba(243, 238, 223, 0.3) var(--fill)); }
+.panel input[type="range"]::-moz-range-thumb { box-sizing: border-box; width: var(--thumb); height: var(--thumb); background: #0f1118; border: 2.5px solid var(--ink); border-radius: 50%; }
+
+/* pinned panels: a column on the right */
+.dock { position: absolute; right: var(--side); width: max(220px, calc(370 * var(--s))); max-height: 68%; overflow: hidden auto;
+  display: flex; flex-direction: column; gap: max(8px, calc(14 * var(--s))); pointer-events: none; }
+
+/* ---------- bottom: viewpoint ---------- */
+.bottom { position: absolute; left: var(--side); right: var(--side); bottom: max(10px, calc(34 * var(--s))); pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; gap: max(8px, calc(14 * var(--s))); }
+.viewbar { display: flex; align-items: center; min-height: max(38px, calc(68 * var(--s))); padding: max(2px, calc(10 * var(--s))) max(14px, calc(32 * var(--s)));
+  background: var(--surface); border: 1.5px solid var(--edge); border-radius: max(19px, calc(34 * var(--s))); pointer-events: auto; }
+.view-kind { display: flex; gap: max(14px, calc(34 * var(--s))); }
+.view-kind button { display: flex; align-items: center; gap: 0.5em; min-height: max(32px, calc(44 * var(--s))); padding: 0 0.2em; background: none; border: 0; font-size: var(--f-m); white-space: nowrap; }
+.ring { position: relative; flex: none; width: 0.95em; height: 0.95em; border: 1.5px solid currentColor; border-radius: 50%; }
+[aria-checked="true"] > .ring::after { content: ""; position: absolute; inset: 20%; border-radius: 50%; background: var(--gold); }
+.view-dirs { display: none; gap: max(6px, calc(10 * var(--s))); margin-left: max(12px, calc(30 * var(--s))); padding-left: max(12px, calc(30 * var(--s))); border-left: 1.5px solid var(--edge); }
+.viewbar.fixed .view-dirs { display: flex; }
+.view-dirs button { min-width: max(42px, calc(62 * var(--s))); min-height: max(34px, calc(40 * var(--s))); padding: 0 0.7em; font-size: var(--f-s); }
+
+/* ---------- tall screens: two rows on top, the panel rises from the bottom ---------- */
+@media (max-aspect-ratio: 4/5) {
+  .topbar { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title modes" "play play"; }
+  .title-pill { grid-area: title; } .modes { grid-area: modes; } .play-pill { grid-area: play; justify-self: center; }
+  .title-text p { display: none; }
+  .panel-host { position: static; width: min(100%, max(340px, calc(620 * var(--s)))); }
+  .panel:not(.pinned) .chip.close { display: inline-flex; }
+  .viewbar { flex-direction: column; }
+  .view-dirs { margin: 0 0 max(4px, calc(8 * var(--s))); padding: 0; border: 0; }
+  .dock { left: var(--side); width: auto; max-height: none; align-items: center; }
+  .dock .panel { width: min(100%, max(340px, calc(620 * var(--s)))); }
+  .dock .panel ~ .panel { display: none; }                       /* one pinned panel on a tall screen */
+  .dock .panel-body canvas { height: max(84px, calc(150 * var(--s))); }
+  .dock { transition: opacity 0.2s ease; }
+  .sim.fan-open .dock { opacity: 0; pointer-events: none; }   /* the open fan needs the room */
+  .sim.fan-open .dock .panel { pointer-events: none; }
+}
+
+/* ---------- phones: tighter spacing ---------- */
+@media (max-width: 700px), (max-height: 500px) {
+  .topbar { column-gap: 8px; }
+  .title-pill { gap: 4px; padding-right: 11px; }
+  .title-text p { display: none; }
+  .up { width: 22px; }
+  .modes { gap: 6px; }
+  .pair button { padding: 0 7px; }
+  .submenu { left: calc(var(--fan-x) + 303 * var(--s)); }
+  .sub { padding: 0 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) { .seg, .seg text, .submenu { transition-duration: 0.01s; } }
+@media (max-height: 500px) and (min-aspect-ratio: 4/5) { .dock { width: 200px; } }   /* a phone held sideways */

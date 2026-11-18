@@ -9,10 +9,10 @@ function partCard(subject, part, index) {
   const chapters = part.chapters.map((chapter, c) => `
     <h3 class="chapter row" style="--i:${row++}">${c + 1}. ${chapter.name}</h3>
     <ul>${chapter.sims.map((sim, n) => {
-      const inner = `<span class="num">${String(n + 1).padStart(2, '0')}</span><span class="sim-name">${sim.name}</span>`;
+      const inner = `<span class="num">${String(n + 1).padStart(2, '0')}</span><span class="entry-name">${sim.name}</span>`;
       return `<li class="row" style="--i:${row++}">${sim.ready
-        ? `<a class="sim" href="#/${subject.id}/${sim.code}">${inner}</a>`
-        : `<span class="sim off" aria-disabled="true">${inner}</span>`}</li>`;
+        ? `<a class="entry" href="#/${subject.id}/${sim.code}">${inner}</a>`
+        : `<span class="entry off" aria-disabled="true">${inner}</span>`}</li>`;
     }).join('')}</ul>`).join('');
   const count = part.chapters.reduce((sum, chapter) => sum + chapter.sims.length, 0);
   return `

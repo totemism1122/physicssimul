@@ -1,7 +1,7 @@
 // Address handling and the dissolve between screens.
 //   #/                      first screen (subject cards)
 //   #/physics               unit list of a subject
-//   #/physics/P-13?mode=…   a simulation (options after "?")
+//   #/physics/P-13?mode=adv&use=class   a simulation; options after "?" (advanced mode, classroom use)
 import { findSubject, findSim } from './data/units.js';
 import { firstScreen } from './home/first.js';
 import { unitsScreen } from './home/units.js';
@@ -17,6 +17,7 @@ function show(screen) {
   document.title = screen.title;
   screen.el.classList.add('screen');
   app.append(screen.el);
+  if (screen.enter) screen.enter();
   screen.el.getBoundingClientRect();   // settle the starting opacity before fading in
   screen.el.classList.add('on');
   if (previous) {
@@ -26,34 +27,47 @@ function show(screen) {
   }
 }
 
-// Temporary: stands in for the simulation screen until the common frame is built (stage 2).
-function placeholderScreen(found) {
-  const el = document.createElement('section');
-  el.className = 'units';
-  el.innerHTML = `
-    <a class="back" href="#/${found.subject.id}" data-up>${chevron}<span>Physics</span></a>
-    <header class="units-head"><h1>${found.number} ${found.sim.name}</h1><p>${found.subject.name} · ${found.part.roman} ${found.part.name}</p></header>`;
-  return { el, title: `${found.sim.name} · ${found.subject.name}` };
+// The simulation frame and its style sheet are fetched only when a simulation is opened,
+// so the first screen and the unit list stay light.
+function loadStyle(href) {
+  if (document.querySelector(`link[href="${href}"]`)) return Promise.resolve();
+  return new Promise((done) => {
+    const link = Object.assign(document.createElement('link'), { rel: 'stylesheet', href, onload: done, onerror: done });
+    document.head.append(link);
+  });
 }
-const chevron = '<svg viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+async function simScreenFor(found, query) {
+  const [{ simScreen }] = await Promise.all([import('./frame/frame.js'), loadStyle('css/sim.css')]);
+  return simScreen(found, query, setAddress);
+}
 
 function screenFor(hash) {
-  const [subjectId, code] = hash.replace(/^#\/?/, '').split('?')[0].split('/').filter(Boolean);
+  const [path, options] = hash.replace(/^#\/?/, '').split('?');
+  const [subjectId, code] = path.split('/').filter(Boolean);
   const subject = findSubject(subjectId);
   if (!subject) return firstScreen();
   const found = code && findSim(code);
-  if (found && found.sim.ready && found.subject === subject) return placeholderScreen(found);
+  if (found && found.sim.ready && found.subject === subject) return simScreenFor(found, new URLSearchParams(options || ''));
   return unitsScreen(subject);
 }
 
 // The trail of addresses visited in this tab, so the on-screen back arrow can use the browser's own "back"
 // when that leads to the same place (no duplicate history entries).
 const trail = [];
-function route() {
+let turn = 0;
+async function route() {
   const hash = location.hash || '#/';
   if (trail[trail.length - 2] === hash) trail.pop();
   else if (trail[trail.length - 1] !== hash) trail.push(hash);
-  show(screenFor(hash));
+  const mine = ++turn;
+  const screen = await screenFor(hash);   // a simulation takes a moment; the screen before it stays until it is ready
+  if (mine === turn) show(screen);
+  else if (screen.leave) screen.leave();
+}
+// Changes the address without leaving the screen (the mode buttons of a simulation).
+function setAddress(hash) {
+  trail[trail.length - 1] = hash;
+  history.replaceState(null, '', hash);
 }
 document.addEventListener('click', (e) => {
   const up = e.target.closest('a[data-up]');
