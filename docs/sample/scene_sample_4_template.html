@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>장면 디자인 견본 – 전자기 유도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #F3EEDF; --gold: #E3C26B; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #efe7d9; color: var(--ink); overflow: hidden;
+    font-family: "Noto Serif KR", "AppleMyungjo", "Nanum Myeongjo", serif; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .hud { position: fixed; z-index: 2; }
+  #title { top: 18px; left: 20px; background: rgba(20, 25, 38, 0.74); border: 1.5px solid rgba(243, 238, 223, 0.26); border-radius: 18px; padding: 12px 20px; }
+  #title h1 { margin: 0; font-size: 26px; font-weight: 700; }
+  #title p { margin: 4px 0 0; font-size: 15px; opacity: 0.65; }
+  #styles { top: 22px; right: 24px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: 60vw; }
+  button, label.chip { font: inherit; font-size: 16px; color: var(--ink); border-radius: 999px; padding: 9px 18px; cursor: pointer;
+    background: rgba(44, 50, 71, 0.78); border: 1.5px solid rgba(243, 238, 223, 0.24); }
+  button.on { background: rgba(15, 17, 24, 0.94); border-color: rgba(243, 238, 223, 0.12); color: var(--gold); font-weight: 700; }
+  #bottom { bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center;
+    background: rgba(20, 25, 38, 0.74); border: 1.5px solid rgba(243, 238, 223, 0.26); border-radius: 999px; padding: 8px 12px; white-space: nowrap; }
+  label.chip { display: inline-flex; gap: 8px; align-items: center; }
+  label.chip input { accent-color: #E3C26B; width: 17px; height: 17px; margin: 0; }
+  #hint { font-size: 14px; opacity: 0.8; padding: 0 10px; }
+  @media (max-width: 720px) {
+    #title h1 { font-size: 20px; } #styles { top: 84px; left: 12px; right: 12px; max-width: none; justify-content: flex-start; }
+    button, label.chip { font-size: 14px; padding: 8px 13px; } #hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud" id="title"><h1>03 전자기 유도</h1><p>장면 디자인 견본 4 · 자석을 옮기고 돌려 보세요</p></div>
+<div class="hud" id="bottom">
+  <button id="reset">처음으로</button>
+  <button id="lay">자석 눕히기·세우기</button>
+  <button id="auto">자동 시연</button>
+  <label class="chip"><input type="checkbox" id="field">자기장 선(모형)</label>
+  <span id="hint">자석 가운데를 끌면 이동 · 끝을 끌면 회전</span>
+</div>
+<script>/*__THREE__*/</script>
+<script>/*__APP__*/</script>
+</body>
+</html>
