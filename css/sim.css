@@ -135,8 +135,15 @@
 .panel input[type="range"]::-moz-range-thumb { box-sizing: border-box; width: var(--thumb); height: var(--thumb); background: #0f1118; border: 2.5px solid var(--ink); border-radius: 50%; }
 
 /* pinned panels: a column on the right */
-.dock { position: absolute; right: var(--side); width: max(220px, calc(370 * var(--s))); max-height: 68%; overflow: hidden auto;
+/* The column ends above the viewpoint bar (js/frame/frame.js sets its top and its greatest height). Pinned graphs
+   give up some of their height when the column would not fit; only if that is not enough does the column scroll. */
+.dock { position: absolute; right: var(--side); width: max(220px, calc(370 * var(--s))); overflow: hidden auto;
   display: flex; flex-direction: column; gap: max(8px, calc(14 * var(--s))); pointer-events: none; }
+.dock .panel { flex: none; }
+.dock .panel-graph { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.dock .panel-graph .panel-body { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.dock .panel-graph canvas { flex: 0 1 max(104px, calc(190 * var(--s))); height: auto; min-height: max(64px, calc(110 * var(--s))); }
+.dock .panel-graph.stacked canvas { flex-basis: max(180px, calc(330 * var(--s))); min-height: max(110px, calc(190 * var(--s))); }
 
 /* ---------- bottom: viewpoint ---------- */
 .bottom { position: absolute; left: var(--side); right: var(--side); bottom: max(10px, calc(34 * var(--s))); pointer-events: none;
@@ -160,11 +167,11 @@
   .panel:not(.pinned) .chip.close { display: inline-flex; }
   .viewbar { flex-direction: column; }
   .view-dirs { margin: 0 0 max(4px, calc(8 * var(--s))); padding: 0; border: 0; }
-  .dock { left: var(--side); width: auto; max-height: none; align-items: center; }
+  .dock { left: var(--side); width: auto; align-items: center; }
   .dock .panel { width: min(100%, max(340px, calc(620 * var(--s)))); }
   .dock .panel ~ .panel { display: none; }                       /* one pinned panel on a tall screen */
-  .dock .panel-body canvas { height: max(84px, calc(150 * var(--s))); }
-  .dock .stacked .panel-body canvas { height: max(150px, calc(270 * var(--s))); }
+  .dock .panel-graph canvas { flex-basis: max(84px, calc(150 * var(--s))); }
+  .dock .panel-graph.stacked canvas { flex-basis: max(150px, calc(270 * var(--s))); }
   .dock { transition: opacity 0.2s ease; }
   .sim.fan-open .dock { opacity: 0; pointer-events: none; }   /* the open fan needs the room */
   .sim.fan-open .dock .panel { pointer-events: none; }
@@ -183,4 +190,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) { .seg, .seg text, .submenu { transition-duration: 0.01s; } }
-@media (max-height: 500px) and (min-aspect-ratio: 4/5) { .dock { width: 200px; } }   /* a phone held sideways */
+@media (max-height: 500px) and (min-aspect-ratio: 4/5) {   /* a phone held sideways: a narrower column, one pinned panel */
+  .dock { width: 200px; }
+  .dock .panel ~ .panel { display: none; }
+}

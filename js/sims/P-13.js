@@ -5,7 +5,6 @@
 const signed = (value) => { const s = value.toFixed(1); return (s === '-0.0' ? '0.0' : s).replace('-', '−'); };
 
 export default {
-  view: '3d',
   fixedViews: ['left', 'right', 'front', 'top'],
   camera: { target: [0.5, 1.75, 0], r: 12, theta: 0.45, phi: 1.2 },
   // what the graphs record. current: 1 is the full scale of the galvanometer. flux: the same number as the magnet's

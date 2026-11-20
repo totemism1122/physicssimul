@@ -13,7 +13,6 @@ const onRail = (values) => values.scene !== 'plane', onPlane = (values) => value
 const SPEED = { window: 8, range: 2, read: (v) => `${speedText(v)} m/s` };
 
 export default {
-  view: '3d',
   fixedViews: ['front', 'top'],   // along the rail (left, right) the two carts hide each other
   // tall: where an upright screen starts, looking along the rail so that all of it is in sight
   camera: { target: [0, 0.9, 0], r: 14, theta: 0.32, phi: 1.1, rMax: 34, tall: { theta: 1.1, r: 20 } },

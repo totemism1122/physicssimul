@@ -107,6 +107,7 @@ export async function simScreen(found, query, setAddress) {
   function refreshPanels() { if (open) open.panel.refresh(); for (const panel of pinned.values()) panel.refresh(); }
   const tall = window.matchMedia('(max-aspect-ratio: 4/5)');
   const compact = window.matchMedia('(max-width: 700px), (max-height: 500px)');
+  const low = window.matchMedia('(max-height: 500px)');   // a phone held sideways
 
   const fan = createFan(MENUS, {
     onOpen(on) {
@@ -163,7 +164,7 @@ export async function simScreen(found, query, setAddress) {
   function togglePin(id) {
     if (pinned.has(id)) { const panel = pinned.get(id); panel.stop(); panel.el.remove(); pinned.delete(id); }
     else if (open && open.id === id) {
-      if (tall.matches) for (const other of [...pinned.keys()]) togglePin(other);   // tall screens keep one pinned panel
+      if (tall.matches || low.matches) for (const other of [...pinned.keys()]) togglePin(other);   // small screens keep one pinned panel
       const panel = open.panel; open = null;
       pinned.set(id, panel); panel.setPinned(true); dock.append(panel.el);
     }
@@ -181,9 +182,13 @@ export async function simScreen(found, query, setAddress) {
     const shift = menu && !compact.matches && !isTall ? fan.labelY(menu) * 1.47 * scale : 0;
     const top = Math.max(ceiling, Math.min(floor - submenu.offsetHeight, height / 2 + shift - submenu.offsetHeight / 2));
     submenu.style.top = `${top}px`;
-    dock.style.top = `${isTall ? ceiling : ceiling + 100 * scale}px`;
-    if (isTall) { host.style.left = host.style.top = ''; return; }
-    const left = Math.min(submenu.offsetLeft + submenu.offsetWidth + Math.max(10, 24 * scale), width - host.offsetWidth - 8);
+    const dockTop = isTall || low.matches ? ceiling : ceiling + 100 * scale;
+    dock.style.top = `${dockTop}px`; dock.style.maxHeight = isTall ? '' : `${Math.max(120, floor - dockTop)}px`;
+    if (isTall) { host.style.left = host.style.top = host.style.maxWidth = ''; return; }
+    // the open panel stands beside the detailed menu and keeps clear of the pinned column, narrower if it must
+    const wanted = submenu.offsetLeft + submenu.offsetWidth + Math.max(10, 24 * scale), edge = (pinned.size ? dock.offsetLeft : width) - 8;
+    host.style.maxWidth = `${Math.max(200, edge - wanted)}px`;
+    const left = Math.min(wanted, edge - host.offsetWidth);
     host.style.left = `${Math.max(8, left)}px`;
     host.style.top = `${Math.max(ceiling, Math.min(top, floor - host.offsetHeight))}px`;
   }
