@@ -74,6 +74,25 @@ export function createKit(T) {
     }
   }
 
+  // An arrow for marking a direction in the scene (a current, a field, a force). It starts at its position and
+  // points along +Y until aimed. It is drawn over everything else, like a mark on a diagram, unless overlay is false.
+  const UP = new T.Vector3(0, 1, 0);
+  function arrow(color, thick = 0.05, overlay = true) {
+    const material = new T.MeshBasicMaterial({ color, transparent: true, depthTest: !overlay, depthWrite: false });
+    const g = new T.Group(), head = thick * 6;
+    const shaft = new T.Mesh(cyl(thick, thick, 1, 14), material), tip = new T.Mesh(new T.ConeGeometry(thick * 2.6, head, 18), material);
+    if (overlay) shaft.renderOrder = tip.renderOrder = 10;
+    g.add(shaft, tip);
+    g.material = material;
+    g.setLength = (length) => {
+      const body = Math.max(0.001, length - head);
+      shaft.scale.y = body; shaft.position.y = body / 2; tip.position.y = body + head / 2;
+    };
+    g.aim = (direction) => g.quaternion.setFromUnitVectors(UP, direction);   // direction: a unit vector
+    g.setLength(1);
+    return g;
+  }
+
   // Replaces the many small meshes of a static group by one mesh per material, so a detailed room costs
   // a few dozen draw calls instead of several hundred.
   function mergeStatic(group) {
@@ -107,5 +126,5 @@ export function createKit(T) {
     return merged;
   }
 
-  return { mat, glow, add, box, cyl, canvasTexture, tiled, textTexture, gridTexture, letterTexture, marbleTexture, roundedBox, ringGeometry, Helix, mergeStatic };
+  return { mat, glow, add, box, cyl, canvasTexture, tiled, textTexture, gridTexture, letterTexture, marbleTexture, roundedBox, ringGeometry, Helix, arrow, mergeStatic };
 }

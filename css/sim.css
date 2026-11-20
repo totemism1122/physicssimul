@@ -56,13 +56,6 @@
 .sim [aria-pressed="true"], .sim [aria-checked="true"] { color: var(--gold); font-weight: 700; }
 .pair [aria-pressed="true"], .chip[aria-pressed="true"], .sub[aria-pressed="true"], .view-dirs [aria-checked="true"] {
   background: var(--chosen); border-color: rgba(243, 238, 223, 0.12); }
-/* the mark for anything beyond the curriculum (advanced mode) */
-.beyond-mark { flex: none; display: inline-block; width: 0.42em; height: 0.42em; margin: 0 0.15em 0 0.55em; background: var(--gold); transform: rotate(45deg); }
-.beyond { display: none; position: absolute; right: 0; top: calc(100% + max(6px, calc(10 * var(--s)))); align-items: center; white-space: nowrap;
-  padding: max(3px, calc(5 * var(--s))) max(10px, calc(16 * var(--s))); font-size: var(--f-s); color: var(--gold);
-  background: var(--surface); border: 1px solid rgba(227, 194, 107, 0.5); border-radius: 999px; }
-.beyond .beyond-mark { margin: 0 0.55em 0 0.1em; }
-.sim.adv .beyond { display: flex; }
 
 /* ---------- left: fan menu ---------- */
 .fan { position: absolute; left: 0; top: 50%; width: 0; height: 0; }
@@ -96,6 +89,7 @@
 /* ---------- control panels ---------- */
 .panel-host { position: absolute; width: max(230px, calc(380 * var(--s))); }
 .panel-host:empty { display: none; }
+.panel-host.wide { width: max(330px, calc(560 * var(--s))); }   /* a table with many columns */
 .panel { padding: max(11px, calc(22 * var(--s))) max(14px, calc(26 * var(--s))); background: var(--surface); border: 1.5px solid var(--edge);
   border-radius: max(14px, calc(22 * var(--s))); pointer-events: auto; }
 .panel header { display: flex; align-items: baseline; justify-content: space-between; gap: 1em; }
@@ -103,6 +97,7 @@
 .panel output { font-size: var(--f-l); font-weight: 700; color: var(--gold); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .panel-body { margin: max(6px, calc(14 * var(--s))) 0 max(8px, calc(16 * var(--s))); }
 .panel-body p { margin: 0; font-size: var(--f-m); line-height: 1.6; color: var(--ink); }
+.panel-graph canvas { touch-action: none; cursor: crosshair; }
 .panel-body canvas { display: block; width: 100%; height: max(104px, calc(190 * var(--s))); font-family: var(--serif); font-size: var(--f-s); }
 .chips { display: flex; flex-wrap: wrap; gap: max(6px, calc(10 * var(--s))); }
 .chip { display: inline-flex; align-items: center; min-height: max(30px, calc(34 * var(--s))); padding: 0 max(12px, calc(20 * var(--s))); font-size: var(--f-s); }
@@ -112,6 +107,21 @@
 .panel-graph { position: relative; }
 .panel-graph footer { position: absolute; right: max(14px, calc(26 * var(--s))); top: max(9px, calc(18 * var(--s))); }
 .panel-graph .panel-body { margin-bottom: 0; }
+.panel-graph.stacked .panel-body canvas { height: max(180px, calc(330 * var(--s))); }   /* two plots, one above the other */
+/* a record table */
+.panel-table .panel-body { overflow-x: auto; }
+.panel-table table { width: 100%; border-collapse: collapse; font-size: var(--f-s); font-variant-numeric: tabular-nums; }
+.panel-table th { padding: 0 0.15em 0.5em; font-weight: 400; line-height: 1.25; color: var(--ink-soft); white-space: nowrap; vertical-align: bottom; }
+.panel-table th small { display: block; font-size: inherit; }
+.panel-table td { padding: 0.36em 0.15em; text-align: center; border-top: 1px solid var(--edge); white-space: nowrap; }
+.panel-table td.changed { color: var(--gold); font-weight: 700; }
+.panel-table td:last-child { font-weight: 700; }
+
+/* writing beside a point of the 3D scene */
+.scene-label { position: absolute; left: 0; top: 0; padding: 0.3em 0.8em; background: var(--surface); border: 1.5px solid var(--edge); border-radius: 999px;
+  font-size: var(--f-m); color: var(--ink); white-space: nowrap; pointer-events: none; font-variant-numeric: tabular-nums; }
+.scene-label b { color: var(--gold); }
+.scene-label.lines { padding: 0.45em 0.9em; border-radius: max(10px, calc(16 * var(--s))); font-size: var(--f-s); line-height: 1.5; text-align: left; }
 
 .panel input[type="range"] { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: var(--thumb); margin: 0; background: none; cursor: pointer;
   --fill: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--p, 0)); }
@@ -154,6 +164,7 @@
   .dock .panel { width: min(100%, max(340px, calc(620 * var(--s)))); }
   .dock .panel ~ .panel { display: none; }                       /* one pinned panel on a tall screen */
   .dock .panel-body canvas { height: max(84px, calc(150 * var(--s))); }
+  .dock .stacked .panel-body canvas { height: max(150px, calc(270 * var(--s))); }
   .dock { transition: opacity 0.2s ease; }
   .sim.fan-open .dock { opacity: 0; pointer-events: none; }   /* the open fan needs the room */
   .sim.fan-open .dock .panel { pointer-events: none; }

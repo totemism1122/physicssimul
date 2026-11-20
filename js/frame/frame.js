@@ -3,6 +3,7 @@
 import { createFan } from './fan.js';
 import { buildPanel } from './panel.js';
 import { createClock } from './clock.js';
+import { createTrace, createChart } from './graph.js';
 
 const MENUS = [
   { id: 'vars', label: '변인' }, { id: 'graph', label: '그래프' }, { id: 'time', label: '시간' },
@@ -19,7 +20,6 @@ const playIcon = '<svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true">
 // setAddress(hash): lets the frame keep the address in step with the mode buttons.
 export async function simScreen(found, query, setAddress) {
   const { default: spec } = await import(`../sims/${found.sim.code}.js`);
-  const flat = spec.view === '2d';
   const el = document.createElement('section');
   el.className = 'sim';
   el.innerHTML = `
@@ -37,7 +37,6 @@ export async function simScreen(found, query, setAddress) {
         <div class="pair" role="group" aria-label="쓰임">
           <button type="button" data-use="class">수업</button><button type="button" data-use="inquiry">탐구</button>
         </div>
-        <span class="beyond"><i class="beyond-mark"></i>교육과정 밖</span>
       </div>
     </header>
     <div class="submenu"></div>
@@ -61,15 +60,28 @@ export async function simScreen(found, query, setAddress) {
   const listeners = {};
   const ctx = {
     spec, values: {}, locked: new Set(), advanced: query.get('mode') === 'adv', classUse: query.get('use') === 'class',
-    view: { kind: flat ? 'fixed' : 'free', dir: spec.fixedViews.includes('front') ? 'front' : spec.fixedViews[0] },
+    view: { kind: 'free', dir: spec.fixedViews.includes('front') ? 'front' : spec.fixedViews[0] },
+    traces: {},   // id -> the record of one quantity against time (js/frame/graph.js); the simulation adds the samples
+    charts: {},   // id -> the numbers behind a bar chart; the simulation sets them
+    tables: {},   // id -> { rows, add(row), clear() } behind a record table; the simulation adds the rows
     on(type, fn) { (listeners[type] = listeners[type] || []).push(fn); },
     emit(type, ...args) { (listeners[type] || []).forEach((fn) => fn(...args)); },
     set(id, value) { ctx.values[id] = value; ctx.emit('change', id, value); },
   };
   for (const items of Object.values(spec.menus)) for (const item of items) {
     ctx.values[item.id] = item.kind === 'toggle' ? false : item.value;
+    if (item.kind === 'table') {
+      const table = ctx.tables[item.id] = {
+        rows: [],
+        add(row, replace) { if (replace) table.rows.pop(); table.rows.push(row); if (table.rows.length > (item.rows || 6)) table.rows.shift(); refreshPanels(); place(); },
+        clear() { table.rows.length = 0; refreshPanels(); place(); },
+      };
+    }
   }
-  const visible = (item) => !item.advanced || ctx.advanced;
+  for (const [id, options] of Object.entries(spec.traces || {})) ctx.traces[id] = createTrace(options);
+  for (const [id, options] of Object.entries(spec.charts || {})) ctx.charts[id] = createChart(options);
+  // an item may belong to the advanced mode only (advanced: true) or to some arrangements only (when(values))
+  const visible = (item) => (!item.advanced || ctx.advanced) && (!item.when || item.when(ctx.values));
 
   // ---------- play / pause ----------
   const clockText = $('.clock'), play = $('.play');
@@ -81,16 +93,18 @@ export async function simScreen(found, query, setAddress) {
   }
   play.addEventListener('click', () => setPlaying(!clock.running));
   ctx.setPlaying = (on) => { if (on !== clock.running) setPlaying(on); };
+  ctx.seek = (t) => { clock.t = t; clockText.textContent = `${t.toFixed(1)} s`; };   // the simulation jumped to another moment
   ctx.on('change', (id, value) => { if (id === 'slow') clock.rate = value ? 0.25 : 1; });
   ctx.on('action', (id) => {
     if (id === 'reset') { setPlaying(false); clock.reset(); }
-    if (id === 'step') { setPlaying(false); clock.step(0.05); }
+    if (id === 'step') { setPlaying(false); clock.step(spec.stepTime || 0.05); }
   });
 
   // ---------- fan menu, detailed menu, panels ----------
   let menu = null;             // id of the chosen fan piece
   let open = null;             // the unpinned panel on show: { id, panel }
   const pinned = new Map();    // id -> panel, in the order they were pinned
+  function refreshPanels() { if (open) open.panel.refresh(); for (const panel of pinned.values()) panel.refresh(); }
   const tall = window.matchMedia('(max-aspect-ratio: 4/5)');
   const compact = window.matchMedia('(max-width: 700px), (max-height: 500px)');
 
@@ -109,7 +123,7 @@ export async function simScreen(found, query, setAddress) {
   function showSubmenu() {
     const items = menu ? spec.menus[menu].filter(visible) : [];
     submenu.innerHTML = items.map((item) => `
-      <button class="sub ${item.kind}" type="button" data-id="${item.id}">${item.label}${item.advanced ? '<i class="beyond-mark"></i>' : ''}</button>`).join('');
+      <button class="sub ${item.kind}" type="button" data-id="${item.id}">${item.label}</button>`).join('');
     submenu.classList.toggle('on', fan.open && items.length > 0);
     markSubmenu();
     place();
@@ -125,7 +139,7 @@ export async function simScreen(found, query, setAddress) {
     const pill = e.target.closest('.sub');
     if (!pill) return;
     const item = spec.menus[menu].find((one) => one.id === pill.dataset.id);
-    if (item.kind === 'toggle') ctx.set(item.id, !ctx.values[item.id]);
+    if (item.kind === 'toggle') ctx.set(item.id, !ctx.values[item.id]);   // the simulation may switch other toggles in answer
     else if (item.kind === 'action') ctx.emit('action', item.id);
     else if (pinned.has(item.id)) return;
     else if (open && open.id === item.id) closePanel();
@@ -137,7 +151,7 @@ export async function simScreen(found, query, setAddress) {
     closePanel();
     const panel = buildPanel(item, ctx, { pin: () => togglePin(item.id), close: closePanel });
     open = { id: item.id, panel };
-    host.replaceChildren(panel.el);
+    host.replaceChildren(panel.el); host.classList.toggle('wide', Boolean(item.wide));
     if (tall.matches) { setFan(false); submenu.classList.remove('on'); }   // the bottom panel folds the fan away
     markSubmenu(); place();
   }
@@ -174,6 +188,26 @@ export async function simScreen(found, query, setAddress) {
     host.style.top = `${Math.max(ceiling, Math.min(top, floor - host.offsetHeight))}px`;
   }
 
+  // Puts away whatever no longer belongs on screen: an advanced item after leaving the advanced mode,
+  // an item of another arrangement after the arrangement was changed.
+  function putAway() {
+    for (const items of Object.values(spec.menus)) for (const item of items) {
+      if (!visible(item)) {
+        if (open && open.id === item.id) closePanel();
+        if (pinned.has(item.id)) togglePin(item.id);
+        if (item.kind === 'toggle' && ctx.values[item.id]) ctx.set(item.id, false);
+      }
+      const chosen = item.options && item.options.find((option) => option.id === ctx.values[item.id]);
+      if (chosen && chosen.advanced && !ctx.advanced) ctx.set(item.id, item.value);
+    }
+  }
+  let listed = '';   // the items on offer, to notice when a changed value brings others
+  ctx.on('change', () => {
+    const now = Object.values(spec.menus).flat().filter(visible).map((item) => item.id).join();
+    if (now === listed) return;
+    listed = now; putAway(); showSubmenu();
+  });
+
   // ---------- modes ----------
   function applyModes() {
     el.classList.toggle('adv', ctx.advanced); el.classList.toggle('use-class', ctx.classUse);
@@ -181,19 +215,8 @@ export async function simScreen(found, query, setAddress) {
     for (const b of el.querySelectorAll('[data-use]')) b.setAttribute('aria-pressed', (b.dataset.use === 'class') === ctx.classUse);
     fan.setDisabled('inquiry', ctx.classUse);
     if (ctx.classUse && menu === 'inquiry') { menu = null; fan.select(null); closePanel(); }
-    if (!ctx.advanced) {   // leaving the advanced mode puts away whatever belongs only to it
-      for (const items of Object.values(spec.menus)) for (const item of items) {
-        if (item.advanced) {
-          if (open && open.id === item.id) closePanel();
-          if (pinned.has(item.id)) togglePin(item.id);
-          if (item.kind === 'toggle' && ctx.values[item.id]) ctx.set(item.id, false);
-        }
-        const chosen = item.options && item.options.find((option) => option.id === ctx.values[item.id]);
-        if (chosen && chosen.advanced) ctx.set(item.id, item.value);
-      }
-    }
-    if (open) open.panel.refresh();
-    for (const panel of pinned.values()) panel.refresh();
+    putAway();
+    refreshPanels();
     showSubmenu();
     ctx.emit('mode');
   }
@@ -210,7 +233,6 @@ export async function simScreen(found, query, setAddress) {
   function applyView() {
     for (const b of el.querySelectorAll('[data-kind]')) {
       b.setAttribute('aria-checked', b.dataset.kind === ctx.view.kind);
-      b.disabled = flat && b.dataset.kind === 'free';
     }
     for (const b of el.querySelectorAll('[data-dir]')) {
       b.setAttribute('aria-checked', b.dataset.dir === ctx.view.dir);
@@ -228,40 +250,19 @@ export async function simScreen(found, query, setAddress) {
   });
 
   // ---------- the scene ----------
-  // 3D: the shared laboratory (three.js, fetched only now) with the simulation's apparatus on the bench.
+  // The shared laboratory (three.js, fetched only now) with the simulation's apparatus on the bench.
   const sceneCanvas = $('.sim-scene');
-  let view3d = null;
-  if (!flat) {
-    const [T, { createKit }, { buildLab }, { createView3D }] = await Promise.all([
-      import('../vendor/three.module.min.js'), import('./kit.js'), import('./lab.js'), import('./view3d.js')]);
-    const kit = createKit(T);
-    view3d = createView3D(T, sceneCanvas, ctx, spec.camera);
-    const lab = buildLab(T, kit, view3d.scene, spec.board);
-    view3d.onQuality(lab.setShadowLevel);
-    const scene = spec.create({ T, kit, view: view3d, world: lab.world, ctx });
-    view3d.onUpdate(scene.update);
-    el.scene = scene; el.view = view3d;   // for checking from the browser console
-  }
-  // 2D: a plain bright room for now, until the Canvas 2D scenes arrive (stage 5).
-  function drawScene() {
-    if (!flat) return;
-    const w = sceneCanvas.clientWidth, h = sceneCanvas.clientHeight, ratio = Math.min(window.devicePixelRatio || 1, 2);
-    if (!w || !h) return;
-    sceneCanvas.width = w * ratio; sceneCanvas.height = h * ratio;
-    const g = sceneCanvas.getContext('2d');
-    g.setTransform(ratio, 0, 0, ratio, 0, 0);
-    g.fillStyle = '#efe7d9'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#c9ad84'; g.fillRect(w * 0.3, h * 0.1, w * 0.58, h * 0.32);
-    g.fillStyle = '#2f5247'; g.fillRect(w * 0.3 + 8, h * 0.1 + 8, w * 0.58 - 16, h * 0.32 - 16);
-    g.fillStyle = '#e3cfad'; g.fillRect(0, h * 0.5, w, h * 0.5);
-    g.fillStyle = '#f0eeea'; g.fillRect(0, h * 0.56, w, h * 0.44);
-    g.strokeStyle = 'rgba(117, 116, 112, 0.35)'; g.lineWidth = 1.5;
-    for (let i = 0; i < 7; i++) { g.beginPath(); g.moveTo(w * (0.08 + i * 0.15), h * 0.56); g.bezierCurveTo(w * (0.02 + i * 0.16), h * 0.7, w * (0.2 + i * 0.13), h * 0.82, w * (0.1 + i * 0.15), h); g.stroke(); }
-  }
-
+  const [T, { createKit }, { buildLab }, { createView3D }] = await Promise.all([
+    import('../vendor/three.module.min.js'), import('./kit.js'), import('./lab.js'), import('./view3d.js')]);
+  const kit = createKit(T), view3d = createView3D(T, sceneCanvas, ctx, spec.camera);
+  const lab = buildLab(T, kit, view3d.scene, spec.board);
+  view3d.onQuality(lab.setShadowLevel);
+  const scene = spec.create({ T, kit, view: view3d, world: lab.world, ctx });
+  view3d.onUpdate(scene.update);
+  el.scene = scene; el.view = view3d; el.ctx = ctx;   // for checking from the browser console
   const onResize = () => {
     if (tall.matches && open && fan.open) { setFan(false); submenu.classList.remove('on'); }   // e.g. a phone turned upright
-    drawScene(); place();
+    place();
   };
   window.addEventListener('resize', onResize);
   tall.addEventListener('change', onResize);
@@ -270,9 +271,9 @@ export async function simScreen(found, query, setAddress) {
   applyView();
   return {
     el, title: `${found.sim.name} · ${found.subject.name}`,
-    enter() { if (view3d) view3d.start(); drawScene(); place(); },
+    enter() { view3d.start(); place(); },
     leave() {
-      clock.pause(); closePanel(); if (view3d) view3d.dispose();
+      clock.pause(); closePanel(); view3d.dispose();
       for (const panel of pinned.values()) panel.stop();
       window.removeEventListener('resize', onResize); tall.removeEventListener('change', onResize);
     },

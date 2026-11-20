@@ -128,12 +128,14 @@ export function buildLab(T, kit, scene, board) {
   add(world, box(20, 0.5, 8), new T.MeshStandardMaterial({ map: tiled(marbleTexture(), 2, 1), roughness: 0.35 }), 0, -0.25, 0, true);
   add(world, box(19, 7.6, 7), birch, 0, -4.3, 0, true);
   add(world, box(19.2, 0.9, 7.1), birchDark, 0, -8.05, 0, false);
-  add(world, box(1.6, 0.14, 1.0), dark, -7.6, 0.07, -2.4); add(world, cyl(0.07, 0.07, 3.6, 12), steel, -7.6, 1.9, -2.4);
-  add(world, box(0.3, 0.2, 0.3), steel, -7.6, 2.9, -2.4); add(world, cyl(0.05, 0.05, 1.4, 10), steel, -6.9, 2.9, -2.4).rotation.z = Math.PI / 2;
-  add(world, box(1.7, 1.0, 1.1), mat(0x5b6b8c), 8.6, 0.5, -2.7); add(world, box(0.7, 0.36, 0.05), glow(0xcfe9d2), 8.3, 0.62, -2.14, false, false);
-  for (const [x, c] of [[8.95, 0xd9584a], [9.2, 0x333333]]) add(world, cyl(0.08, 0.08, 0.1, 12), mat(c), x, 0.4, -2.13, false).rotation.x = Math.PI / 2;
-  add(world, box(2.2, 0.1, 3.0), mat(0xfdfbf3), 6.6, 0.05, 2.0).rotation.y = 0.18; add(world, cyl(0.05, 0.05, 1.6, 8), mat(0x3f6aa6), 7.9, 0.06, 2.3).rotation.set(Math.PI / 2, 0, 0.5);
-  add(world, cyl(0.45, 0.5, 1.1), glass, -6.2, 0.55, 2.4);
+  // world.userData.things: those things, for an experiment that needs the whole bench and puts them away
+  const things = new T.Group(); world.add(things); world.userData.things = things;
+  add(things, box(1.6, 0.14, 1.0), dark, -7.6, 0.07, -2.4); add(things, cyl(0.07, 0.07, 3.6, 12), steel, -7.6, 1.9, -2.4);
+  add(things, box(0.3, 0.2, 0.3), steel, -7.6, 2.9, -2.4); add(things, cyl(0.05, 0.05, 1.4, 10), steel, -6.9, 2.9, -2.4).rotation.z = Math.PI / 2;
+  add(things, box(1.7, 1.0, 1.1), mat(0x5b6b8c), 8.6, 0.5, -2.7); add(things, box(0.7, 0.36, 0.05), glow(0xcfe9d2), 8.3, 0.62, -2.14, false, false);
+  for (const [x, c] of [[8.95, 0xd9584a], [9.2, 0x333333]]) add(things, cyl(0.08, 0.08, 0.1, 12), mat(c), x, 0.4, -2.13, false).rotation.x = Math.PI / 2;
+  add(things, box(2.2, 0.1, 3.0), mat(0xfdfbf3), 6.6, 0.05, 2.0).rotation.y = 0.18; add(things, cyl(0.05, 0.05, 1.6, 8), mat(0x3f6aa6), 7.9, 0.06, 2.3).rotation.set(Math.PI / 2, 0, 0.5);
+  add(things, cyl(0.45, 0.5, 1.1), glass, -6.2, 0.55, 2.4);
 
   // Shadows are the costly part on phones. level 0: all four lamps cast; 1: one lamp casts; 2: none.
   function setShadowLevel(level) {
