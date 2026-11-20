@@ -66,7 +66,7 @@ export async function simScreen(found, query, setAddress) {
     tables: {},   // id -> { rows, add(row), clear() } behind a record table; the simulation adds the rows
     on(type, fn) { (listeners[type] = listeners[type] || []).push(fn); },
     emit(type, ...args) { (listeners[type] || []).forEach((fn) => fn(...args)); },
-    set(id, value) { ctx.values[id] = value; ctx.emit('change', id, value); },
+    set(id, value) { ctx.values[id] = value; ctx.emit('change', id, value); refreshPanels(); },   // an open panel follows a value changed in the scene
   };
   for (const items of Object.values(spec.menus)) for (const item of items) {
     ctx.values[item.id] = item.kind === 'toggle' ? false : item.value;
@@ -179,6 +179,9 @@ export async function simScreen(found, query, setAddress) {
     if (!isTall && host.parentNode !== el) el.insertBefore(host, dock);
     const scale = fan.toggle.offsetWidth / 80, height = el.clientHeight, width = el.clientWidth;
     const ceiling = topbar.offsetTop + topbar.offsetHeight + 6, floor = bottom.offsetTop - 6;
+    // a detailed menu too long for the screen (a phone held sideways) is set in two columns
+    submenu.classList.remove('two');
+    if (submenu.offsetHeight > bottom.offsetTop + bottom.offsetHeight - ceiling) submenu.classList.add('two');
     const shift = menu && !compact.matches && !isTall ? fan.labelY(menu) * 1.47 * scale : 0;
     const top = Math.max(ceiling, Math.min(floor - submenu.offsetHeight, height / 2 + shift - submenu.offsetHeight / 2));
     submenu.style.top = `${top}px`;
@@ -186,7 +189,7 @@ export async function simScreen(found, query, setAddress) {
     dock.style.top = `${dockTop}px`; dock.style.maxHeight = isTall ? '' : `${Math.max(120, floor - dockTop)}px`;
     if (isTall) { host.style.left = host.style.top = host.style.maxWidth = ''; return; }
     // the open panel stands beside the detailed menu and keeps clear of the pinned column, narrower if it must
-    const wanted = submenu.offsetLeft + submenu.offsetWidth + Math.max(10, 24 * scale), edge = (pinned.size ? dock.offsetLeft : width) - 8;
+    const wanted = submenu.offsetLeft + submenu.offsetWidth + Math.max(10, 24 * scale), edge = pinned.size ? dock.offsetLeft - 8 : width - Math.max(8, parseFloat(getComputedStyle(topbar).paddingRight) - 2);   // the right margin holds the notch
     host.style.maxWidth = `${Math.max(200, edge - wanted)}px`;
     const left = Math.min(wanted, edge - host.offsetWidth);
     host.style.left = `${Math.max(8, left)}px`;

@@ -9,9 +9,12 @@ const BUSTS = {
   quantum: [['bohr', 37, 7.5, 63], ['maxwell', -1, 29, 69]],
 };
 
+// Phones fetch only the small pictures (about 350 KB less): students come in over mobile data.
+const phone = window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
 function bustImage([name, left, top, width]) {
-  return `<img src="assets/img/${name}-760.webp" srcset="assets/img/${name}-360.webp 360w, assets/img/${name}-760.webp 760w"
-    sizes="(max-aspect-ratio: 4/5) 38vw, 19vw" alt="" draggable="false" style="left:${left}%;top:${top}%;width:${width}%">`;
+  const source = phone ? `src="assets/img/${name}-360.webp"`
+    : `src="assets/img/${name}-760.webp" srcset="assets/img/${name}-360.webp 360w, assets/img/${name}-760.webp 760w" sizes="(max-aspect-ratio: 4/5) 38vw, 19vw"`;
+  return `<img ${source} alt="" draggable="false" style="left:${left}%;top:${top}%;width:${width}%">`;
 }
 
 export function firstScreen() {

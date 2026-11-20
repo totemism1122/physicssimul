@@ -32,5 +32,7 @@ button { font: inherit; color: inherit; }
 #app { position: fixed; inset: 0; }
 
 /* every screen dissolves in and out */
-.screen { position: absolute; inset: 0; opacity: 0; transition: opacity 0.26s ease; overflow: hidden auto; }
+/* the page runs to the edges of the glass (viewport-fit=cover); what is written keeps clear of the notch and the rounded corners */
+.screen { position: absolute; inset: 0; opacity: 0; transition: opacity 0.26s ease; overflow: hidden auto;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px); }
 .screen.on { opacity: 1; }

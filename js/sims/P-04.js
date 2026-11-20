@@ -1,7 +1,8 @@
 // P-04 Conservation of momentum (3D): two carts on a rail and, in the advanced mode, two discs that slide on the
 // bench (collision in a plane). Menus follow docs/plan_v0.4.md section 3.7.
 // Mass (the pile of weights), initial velocity (pulling a cart or a disc back) and the kind of collision (the
-// bumpers, the rims of the discs) are set by hand in the scene, so they are not in the menu.
+// bumpers, the rims of the discs) are set by hand in the scene. Mass and speed can be set from the menu as well,
+// over the same ranges and in the same steps; the two ways always show the same values.
 // Velocity and momentum count as positive to the right (+x); in the plane, +y points away across the bench.
 // Distances: the bench is drawn life-size, but one unit of the scene is taken as 1 m, so that speeds of
 // 1 to 20 m/s can be followed by eye. No lengths are shown.
@@ -10,6 +11,8 @@ const RED = '#e58373', BLUE = '#7fa6e6', GOLD = '#e3c26b';
 const signed = (value, digits = 1) => { const s = Math.abs(value).toFixed(digits); return Number(s) === 0 ? s : (value > 0 ? '+' : '−') + s; };
 const speedText = (v) => signed(v, Math.abs(v * 10 - Math.round(v * 10)) < 1e-6 ? 1 : 2);   // a second decimal only when it is needed
 const onRail = (values) => values.scene !== 'plane', onPlane = (values) => values.scene === 'plane';   // which arrangement an item of a menu belongs to
+const pushed = (values) => values.scene === 'split', thrown = (values) => values.scene !== 'split';
+const MASS = { kind: 'slider', min: 1, max: 2, step: 0.1, digits: 1, unit: ' kg' }, SPEED_SET = { kind: 'slider', min: 0, max: 20, step: 1, unit: ' m/s', when: thrown };
 const SPEED = { window: 8, range: 2, read: (v) => `${speedText(v)} m/s` };
 
 export default {
@@ -32,6 +35,9 @@ export default {
       { id: 'scene', label: '장면 선택', kind: 'choice', value: 'collide', options: [
         { id: 'collide', label: '충돌' }, { id: 'split', label: '분리' }, { id: 'plane', label: '평면 충돌', advanced: true },
       ] },
+      { id: 'massA', label: '질량 A', value: 1.2, ...MASS }, { id: 'massB', label: '질량 B', value: 1.5, ...MASS },
+      { id: 'speedA', label: '속력 A', value: 5, ...SPEED_SET }, { id: 'speedB', label: '속력 B', value: 0, ...SPEED_SET },
+      { id: 'level', label: '용수철 누름', kind: 'slider', min: 1, max: 3, step: 1, value: 2, unit: '단', when: pushed },
       { id: 'friction', label: '마찰', kind: 'toggle' },
       { id: 'bounce', label: '튕기는 정도', kind: 'slider', min: 0, max: 1, step: 0.1, value: 1, digits: 1, advanced: true },
     ],
@@ -266,8 +272,24 @@ export default {
         run.touch = apart() ? CART.half * 2 + 0.4 : CART.half * 2 + (setup.bumper === 'spring' ? 0.8 : 0.24);   // distance between the middles when the bumpers meet
         chart(0, { mA: mass(A), mB: mass(B), vA: apart() ? 0 : A.speed, vB: apart() ? 0 : -B.speed });
       }
-      moved = true;
+      mirror(); moved = true;
     }
+    // What is set by hand shows in the menu, and the other way round. In the menu the two masses and the two speeds
+    // are those of the carts or of the discs, whichever are on the bench.
+    const DIALS = { massA: [0, 'count'], massB: [1, 'count'], speedA: [0, 'speed'], speedB: [1, 'speed'] };
+    function mirror() {
+      const [a, b] = plane() ? discs : carts;
+      const now = { massA: Number(mass(a).toFixed(1)), massB: Number(mass(b).toFixed(1)), speedA: a.speed, speedB: b.speed, level: setup.level };
+      for (const [id, value] of Object.entries(now)) if (ctx.values[id] !== value) ctx.set(id, value);
+    }
+    function dial(id, value) {   // a slider was moved: the scene takes the value (a run under way is taken back first)
+      let body = setup, what = 'level', to = value;
+      if (DIALS[id]) { body = (plane() ? discs : carts)[DIALS[id][0]]; what = DIALS[id][1]; if (what === 'count') to = Math.round((value - 1) * 10); }
+      if (body[what] === to) return;
+      body[what] = to;
+      if (run.state === 'ready') toStart(); else ctx.emit('action', 'reset');
+    }
+    const locked = (body, what) => ctx.locked.has(what === 'level' ? 'level' : what + body.name);   // locked in the menu: not to be changed by hand either
     function launch() {
       run.state = 'run';
       if (plane()) for (const d of discs) [d.vx, d.vy] = way(d).map((c) => c * d.speed);
@@ -465,6 +487,7 @@ export default {
     let framing = 'rail';
     ctx.on('change', (id, value) => {
       moved = true;
+      if (DIALS[id] || id === 'level') dial(id, value);
       if (id === 'cases' && CASES[value]) {
         const [scene, bumper, a, b, near] = CASES[value], bodies = scene === 'plane' ? discs : carts;
         Object.assign(setup, { bumper, level: 2 });
@@ -543,6 +566,7 @@ export default {
           if (Math.hypot(hit.x - grab.at[0], -hit.z - grab.at[1]) > 0.12) grab.moved = true;
           if (!grab.moved) return;
           const x = cart.home.x - (hit.x - grab.shift[0]), y = cart.home.y - (-hit.z - grab.shift[1]);
+          if (locked(cart, 'speed')) { say(cart, `${cart.speed} m/s · 잠금`); return; }
           cart.speed = Math.max(0, Math.min(MOST, Math.round(Math.hypot(x, y) / DRAW)));
           if (cart.speed) { const angle = Math.round(Math.atan2(y, x) * 180 / Math.PI); cart.angle = angle === -180 ? 180 : angle || 0; }
           toStart(); say(cart, cart.speed ? `${cart.speed} m/s · ${String(cart.angle).replace('-', '−')}°` : '0 m/s');
@@ -551,12 +575,15 @@ export default {
         const p = pointer(r);
         if (!p) return;
         if (grab.kind === 'stack') {
+          if (locked(cart, 'mass')) { say(cart, `${mass(cart).toFixed(1)} kg · 잠금`); return; }
           cart.count = Math.max(0, Math.min(CART.most, grab.count + Math.round((p.up - grab.from.up) / (cart.flat ? p.rise * 1.6 : p.rise))));   // the discs are watched from farther off
           toStart(); say(cart, `${mass(cart).toFixed(1)} kg`);
         } else if (apart()) {   // pushing B towards A presses the spring further
+          if (locked(cart, 'level')) { say(cart, `용수철 ${setup.level}단 · 잠금`); return; }
           setup.level = Math.max(1, Math.min(3, Math.round((0.4 - 2 * (p.x - grab.offset - CART.half)) / 0.1)));
           toStart(); say(cart, `용수철 ${setup.level}단`);
         } else {                // pulling a cart back from the other one sets its speed
+          if (locked(cart, 'speed')) { say(cart, `${cart.speed} m/s · 잠금`); return; }
           cart.speed = Math.max(0, Math.min(MOST, Math.round((-cart.side * (p.x - grab.offset) - START) / PULL)));
           toStart(); say(cart, `${cart.speed} m/s`);
         }

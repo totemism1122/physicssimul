@@ -53,7 +53,7 @@
   .units .parts { flex-direction: row; align-items: flex-start; justify-content: center; }
 }
 
-.back { position: absolute; left: calc(var(--back-x) * var(--u)); top: calc(var(--back-y) * var(--u)); display: flex; align-items: center;
+.back { position: absolute; left: calc(var(--back-x) * var(--u) + env(safe-area-inset-left, 0px)); top: calc(var(--back-y) * var(--u) + env(safe-area-inset-top, 0px)); display: flex; align-items: center;
   gap: calc(var(--back-size) * 0.6 * var(--u)); font: 400 calc(var(--back-size) * var(--u)) / 1.2 var(--title); letter-spacing: 0.03em; }
 .back svg { height: 0.72em; width: auto; }
 .units-head { text-align: center; padding-top: calc(var(--title-top) * var(--u)); }
