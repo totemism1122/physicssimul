@@ -62,6 +62,7 @@ export default {
       { id: 'momentumArrow', label: '운동량 화살표', kind: 'toggle' },
       { id: 'numbers', label: '값', kind: 'toggle' },
       { id: 'trail', label: '지나간 길', kind: 'toggle', when: onPlane },
+      { id: 'angles', label: '산란각', kind: 'toggle', when: onPlane },
       { id: 'pairForce', label: '주고받는 힘', kind: 'toggle', advanced: true },
       { id: 'centre', label: '질량 중심', kind: 'toggle', advanced: true },
     ],
@@ -175,7 +176,7 @@ export default {
       // spring rim (the discs bounce apart) and sticky rim (they go on as one)
       const springy = add(g, new T.TorusGeometry(DISC.r - 0.02, 0.035, 10, 56), M.steel, 0, DISC.high / 2, 0); springy.rotation.x = Math.PI / 2;
       const sticky = add(g, cyl(DISC.r, DISC.r, 0.13, 56), M.dark, 0, DISC.high / 2, 0);
-      const disc = { name, flat: true, group: g, weights, springy, sticky, count: 0, speed: 0, angle, home: { x, y: 0 }, x, y: 0, vx: 0, vy: 0, caught: false, arm: [0, 0] };
+      const disc = { name, ink, flat: true, group: g, weights, springy, sticky, count: 0, speed: 0, angle, home: { x, y: 0 }, x, y: 0, vx: 0, vy: 0, caught: false, arm: [0, 0] };
       // handles for the pointer (not drawn): the pile of weights, and the disc with some room around it
       for (const [part, radius, high, y] of [['stack', 0.24, 1.1, DISC.high + 0.55], ['pull', 1.0, 0.4, 0.2]]) {
         const m = add(g, cyl(radius, radius, high, 20), M.dark, 0, y, 0, false, false); m.visible = false; m.userData = { disc, part }; discHandles.push(m);
@@ -191,6 +192,18 @@ export default {
     }
     const discs = [buildDisc('A', M.a, 0xb0392d, -2.4, 0), buildDisc('B', M.b, 0x2f5fb0, 2.4, 180)];
     const sum = kit.arrow(0x8a6a12, 0.075); sum.visible = false; flat.add(sum);   // the momentum of both together, drawn at the centre of mass
+    // The collision, recorded on the bench: the path the disc came in on, drawn on past the place of the collision,
+    // each disc's path out, and the angle each path out makes with that line (how far the disc was turned aside).
+    const record = new T.Group(); record.visible = false; flat.add(record);
+    const stripe = (color, wide) => add(record, box(1, 0.006, wide), new T.MeshBasicMaterial({ color }), 0, 0, 0, false, false);
+    const straight = stripe(INK.centre, 0.04), beside = stripe(INK.centre, 0.02);   // the line straight on; a short line parallel to it
+    const rays = discs.map((d) => ({   // for each disc: the way out
+      line: stripe(d.ink, 0.035), note: view.label(new T.Vector3()),
+      arc: add(record, new T.BufferGeometry(), new T.MeshBasicMaterial({ color: d.ink, side: T.DoubleSide }), 0, 0, 0, false, false),
+    }));
+    function span(mesh, x1, y1, x2, y2) {   // a stripe on the bench from one point to another
+      mesh.position.set((x1 + x2) / 2, 0.006, -(y1 + y2) / 2); mesh.scale.x = Math.max(0.001, Math.hypot(x2 - x1, y2 - y1)); mesh.rotation.y = Math.atan2(y2 - y1, x2 - x1);
+    }
 
     // each cart: handles for the pointer (not drawn), its marks and its readings
     const handles = [];
@@ -228,7 +241,9 @@ export default {
     // (k / e^2)(x - x0) on the way out, which makes them part at e times the speed they met with.
     // Discs push each other along the line of their middles only (smooth rims, so nothing sets them turning).
     const SPRING = 2000, PAD = 20000, PUSHER = 800, DRAG = 0.2 * 9.8, REACH = 7.16, DOT = 0.04;   // N/m, N/m, N/m, m/s^2, how far a cart can go, s
-    const run = { state: 'ready', t: 0, contact: null, joined: false, before: null, after: null, force: 0, touch: 2.4, spin: 0, normal: [1, 0] };
+    const RIM = 50000;   // N/m: the rims of the discs are stiff, so a collision is over (in about 0.01 s) before the discs have moved on much
+    // hit: the first collision of two discs { at: where each was, before, after: their velocities }
+    const run = { state: 'ready', t: 0, contact: null, joined: false, before: null, after: null, force: 0, touch: 2.4, spin: 0, normal: [1, 0], hit: null };
     const pair = { x: 0, y: 0, vx: 0, vy: 0, turn: 0, inertia: 1, lever: 0 };   // two discs that go on as one body
     let moved = true, tipTime = 0, stopSoon = false, trailNext = 0;
     const snapshot = () => ({ mA: mass(A), mB: mass(B), vA: A.v, vB: B.v });
@@ -252,7 +267,7 @@ export default {
     function force(value, gap) { run.force = value; ctx.traces.fA.add(run.t, -value, gap); ctx.traces.fB.add(run.t, value, gap); }
 
     function toStart() {   // the carts or the discs go back to where they were set, with what was set
-      Object.assign(run, { state: 'ready', t: 0, contact: null, joined: false, before: null, after: null, force: 0, spin: 0 });
+      Object.assign(run, { state: 'ready', t: 0, contact: null, joined: false, before: null, after: null, force: 0, spin: 0, hit: null });
       for (const trace of Object.values(ctx.traces)) trace.clear();
       for (const bars of Object.values(ctx.charts)) bars.clear();
       for (const body of [...carts, ...discs]) body.weights.forEach((weight, i) => { weight.visible = i < body.count; });
@@ -355,8 +370,9 @@ export default {
     // ----- in the plane -----
     function meetDiscs(nx, ny, closing) {   // (nx, ny): from the middle of A towards the middle of B
       // u: how fast they close in along that line; slide: how fast B passes across it as seen from A
-      run.contact = { k: setup.bumper === 'sticky' ? PAD : SPRING, e: bounce(), unloading: false, most: 0, u: closing, slide: (DA.vx - DB.vx) * ny - (DA.vy - DB.vy) * nx };
+      run.contact = { k: RIM, e: bounce(), unloading: false, most: 0, n: [nx, ny], u: closing, slide: (DA.vx - DB.vx) * ny - (DA.vy - DB.vy) * nx };
       if (!run.before) { run.before = flatShot(); flatChart(0, run.before); }
+      if (!run.hit) run.hit = { at: discs.map((d) => [d.x, d.y]), before: discs.map((d) => [d.vx, d.vy]), after: null };
       sample(); force(0, true);
     }
     function carry(h) {   // the two discs as one body: its centre of mass goes straight on while the body turns about it
@@ -377,11 +393,14 @@ export default {
         run.spin = swing / pair.inertia; run.joined = true;
         DA.arm = [-mB / total * dx, -mB / total * dy]; DB.arm = [mA / total * dx, mA / total * dy];
         carry(0);
-      } else {   // exactly: along the line of the middles they part at e times the speed they met with
-        const out = c.e * c.u, across = swing / (reduced * (TOUCH - c.most * (1 - c.e * c.e)));
-        const wx = out * nx - across * ny, wy = out * ny + across * nx;   // the velocity of B as seen from A
+      } else {
+        // Exactly as for a collision that takes no time: about the line of the middles at the moment the rims met,
+        // they part along it at e times the speed they met with, and across it nothing has changed.
+        const [ex, ey] = c.n, out = c.e * c.u;
+        const wx = out * ex - c.slide * ey, wy = out * ey + c.slide * ex;   // the velocity of B as seen from A
         Object.assign(DA, { vx: vx - mB / total * wx, vy: vy - mB / total * wy }); Object.assign(DB, { vx: vx + mA / total * wx, vy: vy + mA / total * wy });
       }
+      if (run.hit && !run.hit.after) run.hit.after = c.e === 0 ? [[vx, vy], [vx, vy]] : discs.map((d) => [d.vx, d.vy]);   // as one body: the way its centre of mass goes
       run.contact = null; force(0); sample();
       if (run.after) return;
       const b = run.before, a = run.after = flatShot(), two = (x, y, text = speedText) => `${text(x)}<br>${text(y)}`;
@@ -615,7 +634,44 @@ export default {
       if (arrow.visible) { arrow.position.set(x, 0.5, -y); arrow.setLength(Math.max(0.32, length)); arrow.aim(aimAt.set(ux, 0, -uy)); }
     }
     const pairText = (x, y, text) => `(${text(x)}, ${text(y)})`;
+    const degrees = (radians) => String(Math.round(radians * 180 / Math.PI) || 0).replace('-', '−');
+    let recorded = '', recordedHit = null;   // which collision is on the bench and how much of it, so that it is drawn afresh only when that changes
+    function drawRecord(shown) {
+      const hit = shown ? run.hit : null, stage = hit ? (hit.after ? 'out' : 'in') : '';
+      if (stage === recorded && hit === recordedHit) return;
+      recorded = stage; recordedHit = hit; record.visible = Boolean(hit); beside.visible = false;
+      for (const ray of rays) { ray.note.show(false); ray.line.visible = ray.arc.visible = false; }
+      if (!hit) return;
+      const speeds = hit.before.map(([x, y]) => Math.hypot(x, y)), lead = speeds[0] > 1e-3 ? 0 : 1;   // the disc that came in: A, unless it stood still
+      const ux = hit.before[lead][0] / speeds[lead], uy = hit.before[lead][1] / speeds[lead], [lx, ly] = hit.at[lead], heading = Math.atan2(uy, ux);
+      span(straight, lx - ux * 3.3, ly - uy * 3.3, lx + ux * 4.6, ly + uy * 4.6);
+      if (!hit.after) return;
+      rays.forEach((ray, i) => {
+        const [vx, vy] = hit.after[i], speed = Math.hypot(vx, vy);
+        if (speed < 1e-3) return;
+        const wx = vx / speed, wy = vy / speed, [cx, cy] = hit.at[i];
+        let turn = Math.atan2(wy, wx) - heading; turn = Math.atan2(Math.sin(turn), Math.cos(turn));   // turned aside by this much: 0 to 180 degrees either way
+        // The angle is drawn where the path out, traced back, crosses the line straight on. For the disc that came in
+        // that is the place of the collision; for a disc that stood still it is the same place (it leaves along the
+        // line of the two middles). Where the paths do not cross nearby, a short parallel line is drawn instead.
+        let px = cx, py = cy;
+        if (i !== lead && Math.abs(turn) > 0.01) {
+          const cross = wx * uy - wy * ux, back = Math.abs(cross) > 1e-6 ? ((lx - cx) * uy - (ly - cy) * ux) / cross : 1;
+          if (back <= 0 && back >= -2) { px = cx + back * wx; py = cy + back * wy; }
+          else { beside.visible = true; span(beside, cx - ux * 0.5, cy - uy * 0.5, cx + ux * 2, cy + uy * 2); }
+        }
+        ray.line.visible = true; span(ray.line, px, py, cx + wx * 2.6, cy + wy * 2.6);
+        const radius = i === lead ? 1.15 : 0.9, middle = heading + turn / 2;
+        ray.arc.visible = Math.abs(turn) > 0.01;
+        ray.arc.geometry.dispose();
+        ray.arc.geometry = new T.RingGeometry(radius - 0.025, radius + 0.025, 32, 1, Math.min(heading, heading + turn), Math.abs(turn)).rotateX(-Math.PI / 2);
+        ray.arc.position.set(px, 0.007, -py);
+        ray.note.at.set(px + Math.cos(middle) * (radius + 0.45), 0, -(py + Math.sin(middle) * (radius + 0.45)));
+        ray.note.write(`<span style="color:${i ? BLUE : RED}">${degrees(Math.abs(turn))}°</span>`); ray.note.show(true);
+      });
+    }
     function drawDiscs(v, ready) {
+      drawRecord(v.angles);
       const sticky = setup.bumper === 'sticky', both = v.velocityArrow && v.momentumArrow ? 0.16 : 0, total = [0, 0];
       discs.forEach((d, i) => {
         d.group.position.set(d.x, 0, -d.y); d.group.rotation.y = run.joined ? pair.turn : 0;
@@ -627,7 +683,7 @@ export default {
         lay(d.arrows.velocity, d.x + uy * both, d.y - ux * both, ux, uy, speed * 0.18, v.velocityArrow);
         lay(d.arrows.momentum, d.x - uy * both, d.y + ux * both, ux, uy, m * speed * 0.14, v.momentumArrow);
         const side = i ? 1 : -1;   // the push on A points away from B, the push on B away from A
-        lay(d.arrows.force, d.x, d.y, side * run.normal[0], side * run.normal[1], run.force / 220, v.pairForce && run.force > 0);
+        lay(d.arrows.force, d.x, d.y, side * run.normal[0], side * run.normal[1], run.force / 900, v.pairForce && run.force > 0);
         d.label.show(v.numbers);
         if (v.numbers) {
           d.spot.set(d.x, i ? 0.1 : 1.3, -d.y);   // A: clear of its pile of weights
@@ -678,6 +734,7 @@ export default {
         if (onBench) drawDiscs(v, ready);
         else {
           for (const d of discs) d.label.show(false);
+          drawRecord(false);
           centre.visible = v.centre; centre.position.set((mass(A) * A.x + mass(B) * B.x) / total, 0, 0);
         }
         const changed = moved;
