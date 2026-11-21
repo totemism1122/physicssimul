@@ -75,7 +75,7 @@ export default {
         columns: [{ label: 'A 무게', unit: 'N' }, { label: 'A 거리', unit: 'm' }, { label: 'A 돌림힘', unit: 'N·m', result: true },
           { label: 'B 무게', unit: 'N' }, { label: 'B 거리', unit: 'm' }, { label: 'B 돌림힘', unit: 'N·m', result: true },
           { label: '막대 돌림힘', unit: 'N·m', result: true, advanced: true }] },
-      { id: 'tipTable', label: '기록 표', kind: 'table', when: onBoard, text: '기울인 물체를 놓을 때마다 한 줄씩 적힙니다. 물체는 고무판 위에서 미끄러지지 않습니다.',
+      { id: 'tipTable', label: '기록 표', kind: 'table', wide: true, when: onBoard, text: '기울인 물체를 놓을 때마다 한 줄씩 적힙니다. 물체는 고무판 위에서 미끄러지지 않습니다.',
         columns: [{ label: '물체' }, { label: '무게 중심', unit: '높이 cm' }, { label: '받침면', unit: '너비 cm' }, { label: '기울인 각', unit: '°' }, { label: '결과', result: true }] },
     ],
   },

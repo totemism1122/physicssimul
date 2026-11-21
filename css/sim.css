@@ -94,7 +94,7 @@
 /* ---------- control panels ---------- */
 .panel-host { position: absolute; width: max(230px, calc(380 * var(--s))); }
 .panel-host:empty { display: none; }
-.panel-host.wide { width: max(330px, calc(560 * var(--s))); }   /* a table with many columns */
+.panel-host.wide { width: max-content; min-width: max(330px, calc(560 * var(--s))); }   /* a table with many columns: as wide as its columns need */
 .panel { padding: max(11px, calc(22 * var(--s))) max(14px, calc(26 * var(--s))); background: var(--surface); border: 1.5px solid var(--edge);
   border-radius: max(14px, calc(22 * var(--s))); pointer-events: auto; }
 .panel header { display: flex; align-items: baseline; justify-content: space-between; gap: 1em; }
@@ -142,9 +142,10 @@
 /* pinned panels: a column on the right */
 /* The column ends above the viewpoint bar (js/frame/frame.js sets its top and its greatest height). Pinned graphs
    give up some of their height when the column would not fit; only if that is not enough does the column scroll. */
-.dock { position: absolute; right: var(--edge-r); width: max(220px, calc(370 * var(--s))); overflow: hidden auto;
-  display: flex; flex-direction: column; gap: max(8px, calc(14 * var(--s))); pointer-events: none; }
-.dock .panel { flex: none; }
+.dock { position: absolute; right: var(--edge-r); --dock: max(220px, calc(370 * var(--s))); overflow: hidden auto;
+  display: flex; flex-direction: column; align-items: flex-end; gap: max(8px, calc(14 * var(--s))); pointer-events: none; }
+.dock .panel { flex: none; width: var(--dock); }
+.dock .panel.wide { width: max-content; min-width: max(330px, calc(560 * var(--s)), var(--dock)); max-width: calc(100vw - var(--edge-l) - var(--edge-r)); }   /* a table with many columns keeps the width it has when open */
 .dock .panel-graph { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .dock .panel-graph .panel-body { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .dock .panel-graph canvas { flex: 0 1 max(104px, calc(190 * var(--s))); height: auto; min-height: max(64px, calc(110 * var(--s))); }
@@ -174,6 +175,7 @@
   .view-dirs { margin: 0 0 max(4px, calc(8 * var(--s))); padding: 0; border: 0; }
   .dock { left: var(--edge-l); width: auto; align-items: center; }
   .dock .panel { width: min(100%, max(340px, calc(620 * var(--s)))); }
+  .panel-host.wide, .dock .panel.wide { width: min(100%, max(340px, calc(620 * var(--s)))); min-width: 0; max-width: 100%; }   /* no wider than the screen: a table too wide for it is slid sideways */
   .dock .panel ~ .panel { display: none; }                       /* one pinned panel on a tall screen */
   .dock .panel-graph canvas { flex-basis: max(84px, calc(150 * var(--s))); }
   .dock .panel-graph.stacked canvas { flex-basis: max(150px, calc(270 * var(--s))); }
@@ -196,6 +198,6 @@
 
 @media (prefers-reduced-motion: reduce) { .seg, .seg text, .submenu { transition-duration: 0.01s; } }
 @media (max-height: 500px) and (min-aspect-ratio: 4/5) {   /* a phone held sideways: a narrower column, one pinned panel */
-  .dock { width: 200px; }
+  .dock { --dock: 200px; }
   .dock .panel ~ .panel { display: none; }
 }

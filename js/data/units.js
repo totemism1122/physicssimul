@@ -7,7 +7,7 @@ export const SUBJECTS = [
     id: 'physics', name: '물리학',
     parts: [
       { roman: 'I', name: '힘과 에너지', chapters: [
-        { name: '힘과 운동', sims: [s('P-01', '평형과 안정성', true), s('P-02', '힘과 가속도', true), s('P-03', '작용 반작용'), s('P-04', '운동량 보존', true)] },
+        { name: '힘과 운동', sims: [s('P-01', '평형과 안정성', true), s('P-02', '힘과 가속도', true), s('P-03', '작용 반작용', true), s('P-04', '운동량 보존', true)] },
         { name: '에너지와 열', sims: [s('P-05', '역학적 에너지 보존'), s('P-06', '에너지 보존'), s('P-07', '열에너지의 전환')] },
       ] },
       { roman: 'II', name: '전기와 자기', chapters: [

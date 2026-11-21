@@ -72,7 +72,7 @@ export default {
       { id: 'rateArrow', label: '가속도 화살표', kind: 'toggle', advanced: true },
     ],
     inquiry: [
-      { id: 'table', label: '기록 표', kind: 'table', when: pulled, text: '수레가 끝 선에 닿을 때마다 한 줄씩 적힙니다.',
+      { id: 'table', label: '기록 표', kind: 'table', wide: true, when: pulled, text: '수레가 끝 선에 닿을 때마다 한 줄씩 적힙니다.',
         columns: [{ label: '알짜힘', unit: 'N' }, { label: '질량', unit: 'kg' }, { label: '가속도', unit: 'm/s²', result: true }, { label: '걸린 시간', unit: 's', result: true },
           { label: '저항 계수', unit: 'N·s/m', advanced: true }] },
       { id: 'stops', label: '기록 표', kind: 'table', wide: true, when: braked, text: '수레가 멈출 때마다 한 줄씩 적힙니다. 제동 거리는 제동 선에서 멈춘 곳까지입니다.',
