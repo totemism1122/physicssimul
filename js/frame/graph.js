@@ -69,7 +69,8 @@ function keepDrawn(canvas, key, paint) {
 }
 
 // item: { x: name of the time axis, plots: [{ y: name, trace: id }] }. Several plots share the time axis, one above
-// the other. A plot may hold several lines instead of one: { y, lines: [{ trace, color, name }] }.
+// the other. xUnit: the unit of that axis where a record is kept against something other than time ('m'; 's' if left out).
+// A plot may hold several lines instead of one: { y, lines: [{ trace, color, name }] }.
 // area: a unit (for a force against time, 'N·s'). The plot is then shaded between each line and the time axis and the
 // area is written under it, with its sign: that of the whole record on show, or up to the marked moment.
 export function createGraph(canvas, item, traces) {
@@ -148,7 +149,7 @@ export function createGraph(canvas, item, traces) {
       for (const { trace } of lines) { g.beginPath(); g.arc(x, py(at(trace)), 3.5, 0, Math.PI * 2); g.fill(); }
       const text = lines.map(({ trace, name }) => `${name ? `${name} ` : ''}${trace.read(at(trace))}`).join('   ');
       notes.push(() => note(g, text, x, lines.length > 1 ? top + size * 1.6 : py(at(lead)), size, w));
-      if (i === plots.length - 1) notes.push(() => note(g, `${(lead.t[k] - lead.t[from]).toFixed(2)} s`, x, bottom + size * 1.9, size, w - g.measureText(item.x).width - size * 0.8));
+      if (i === plots.length - 1) notes.push(() => note(g, `${(lead.t[k] - lead.t[from]).toFixed(2)} ${item.xUnit || 's'}`, x, bottom + size * 1.9, size, w - g.measureText(item.x).width - size * 0.8));
     });
     for (const write of notes) write();            // the writing goes on top of every plot
     g.fillStyle = INK; g.textAlign = 'right'; g.fillText(item.x, w - 2, h - size * 0.75);
@@ -198,8 +199,11 @@ export function createBars(canvas, charts) {
         const mid = left + room * (k + 0.5), numbers = chart.values[k];
         g.fillStyle = INK; g.textAlign = 'center'; g.fillText(group, mid, each * (n + 1) - size * 0.75);
         if (!numbers) return;
+        // the bars stand a little apart, and further where the numbers written over them would run together
+        const wide = Math.max(...numbers.map((value) => g.measureText(chart.read(value)).width));
+        const step = Math.min(room / numbers.length, Math.max(bar * 1.12, wide + size * 0.35));
         numbers.forEach((value, i) => {
-          const x = mid + (i - (numbers.length - 1) / 2) * bar * 1.12, tall = value / range * reach;
+          const x = mid + (i - (numbers.length - 1) / 2) * step, tall = value / range * reach;
           g.fillStyle = chart.colors[i]; g.fillRect(x - bar / 2, Math.min(zero, zero - tall), bar, Math.max(1.5, Math.abs(tall)));
           g.fillStyle = '#f3eedf'; g.fillText(chart.read(value), x, zero - tall + (tall < 0 ? size * 0.8 : -size * 0.7));
         });
