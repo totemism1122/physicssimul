@@ -165,7 +165,7 @@ export default {
       const handle = add(group, box(0.95, 1, 0.95), M.ghost, 0, 0, 0, false, false); handle.visible = false;   // what is caught hold of: a little larger than the pile
       const arm = add(bar, box(1, 0.035, 0.035), armMat, 0, armY, BAR.deep / 2 + 0.05, false, false), end = add(bar, box(0.035, 0.2, 0.035), armMat, 0, armY, BAR.deep / 2 + 0.05, false, false);
       const arrow = kit.arrow(INK[key], 0.04); rig.add(arrow);
-      const p = { key, name, count: `${key}Count`, pos: `${key}Pos`, group, blocks, ghost, handle, arm, end, armY, arrow,
+      const p = { name, count: `${key}Count`, pos: `${key}Pos`, group, blocks, ghost, handle, arm, end, armY, arrow,
         force: 0, far: 0, torque: 0, spot: new T.Vector3(), armSpot: new T.Vector3() };
       handle.userData.grip = { kind: 'pile', pile: p };
       p.label = view.label(p.spot, true, 0.35); p.armLabel = view.label(p.armSpot, false, -0.12);
@@ -234,7 +234,7 @@ export default {
       const [a, b] = piles;
       if (S.net !== 0 || theta !== 0 || !a.force || !b.force) return;
       const row = [a.force.toFixed(1), a.far.toFixed(2), signed(a.torque), b.force.toFixed(1), b.far.toFixed(2), signed(b.torque), signed(S.bar)];
-      if (row.join() === noted) return;
+      if (row.join() === noted && ctx.tables.table.rows.length) return;   // the same arrangement is not written twice, unless the table has been wiped since
       noted = row.join(); ctx.tables.table.add(row);
     }
 
@@ -326,7 +326,8 @@ export default {
       resetting = true;
       for (const one of LEVER) if (!ctx.locked.has(one) && ctx.values[one] !== START[one]) ctx.set(one, START[one]);
       resetting = false;
-      for (const p of piles) { const to = clear(ctx.values[p.pos], ctx.values[p.other.pos]); if (to !== ctx.values[p.pos]) ctx.set(p.pos, to); }   // a locked pile may be in the way
+      // a locked pile may be in the way: the one that is not locked steps aside
+      for (const p of [...piles].sort((a, b) => ctx.locked.has(a.pos) - ctx.locked.has(b.pos))) { const to = clear(ctx.values[p.pos], ctx.values[p.other.pos]); if (to !== ctx.values[p.pos]) ctx.set(p.pos, to); }
       theta = omega = 0; weigh(); place();
     }
     function leverChange(id) {
@@ -404,9 +405,9 @@ export default {
     // falls: for each object tried (height of the centre of gravity / width of the base), the smallest tilt it fell over from
     const falls = new Map();
     function chartFalls() {   // the bars: the textbook's three objects on the present width of base, and the present object if it is none of them
-      const chart = ctx.charts.tip, kinds = Object.keys(KINDS), bar = (h) => (falls.has(`${h}/${K.w}`) ? [falls.get(`${h}/${K.w}`)] : null);
-      chart.groups = kinds.map((kind) => NAMES[kind]); chart.values = kinds.map((kind) => bar(KINDS[kind]));
-      if (!kinds.some((kind) => KINDS[kind] === K.h)) { chart.groups.push(`${K.h.toFixed(1)} cm`); chart.values.push(bar(K.h)); }
+      const chart = ctx.charts.tip, kinds = Object.keys(KINDS), least = (h) => (falls.has(`${h}/${K.w}`) ? [falls.get(`${h}/${K.w}`)] : null);
+      chart.groups = kinds.map((kind) => NAMES[kind]); chart.values = kinds.map((kind) => least(KINDS[kind]));
+      if (!kinds.some((kind) => KINDS[kind] === K.h)) { chart.groups.push(`${K.h.toFixed(1)} cm`); chart.values.push(least(K.h)); }
       chart.stamp++;
     }
     function shape() {
@@ -608,7 +609,11 @@ export default {
         return;
       }
       if (LEVER.includes(id)) { if (!byDemo && !playing) auto = frozen = false; leverChange(id); }
-      if (['object', 'cgHeight', 'baseWidth', 'lean'].includes(id)) { if (!byDemo && !playing) auto = frozen = false; boardChange(id, value); }
+      if (['object', 'cgHeight', 'baseWidth', 'lean'].includes(id)) {
+        if (!byDemo && !playing) auto = frozen = false;
+        boardChange(id, value);
+        if (auto && !demo.search && !byDemo && !quiet) { auto = false; stopSoon = true; }   // set anew while an object that was let go is falling: it stands again, and that demonstration is over
+      }
     });
     ctx.on('mode', () => {   // the basic mode keeps the support under the middle of the bar, and the object one of the textbook's three
       if (ctx.advanced) return;

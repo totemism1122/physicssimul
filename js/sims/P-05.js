@@ -41,15 +41,15 @@ export default {
   stepTime: 0.02,                 // "one step at a time" moves on by this many seconds
   traces: {
     eP: ENERGY, eK: ENERGY, eT: ENERGY, eH: ENERGY, speed: { window: 12, range: 1, read: (v) => `${v.toFixed(2)} m/s` },
-    // against the distance gone since the first photogate (m), not against time
     sG: SWING, sS: SWING, sK: SWING, sT: SWING, sV: { window: 4, range: 0.5, read: (v) => `${v.toFixed(2)} m/s` },
+    // against the distance gone since the first photogate (m), not against time
     fs: { window: 0.72, range: 1, read: (f) => `${f.toFixed(2)} N` }, ks: { window: 0.72, range: 0.2, read: joules },
   },
   charts: {
-    energy: { names: ['위치 에너지', '운동 에너지', '합'], colors: [BLUE, RED, GOLD], groups: ['J'], range: 2, read: (e) => e.toFixed(2) },
+    energy: { names: ['위치 에너지', '운동 에너지', '합'], colors: [BLUE, RED, GOLD, GREY], groups: ['J'], range: 2, read: (e) => e.toFixed(2) },   // with friction a fourth bar is added: what has turned into heat
     work: { names: ['받은 일', '운동 에너지 변화량'], colors: [GOLD, RED], groups: ['J'], signed: false, range: 0.2, read: (e) => e.toFixed(2) },
-    // the cart and the weights together: what the weights lose in potential energy, and what each gains in kinetic energy
     spring: { names: ['위치(중력)', '위치(탄성력)', '운동', '합'], colors: [BLUE, GREEN, RED, GOLD], groups: ['J'], signed: false, range: 0.1, read: milli },
+    // the cart and the weights together: what the weights lose in potential energy, and what each gains in kinetic energy
     system: { names: ['위치 에너지 감소량', '운동 에너지 증가량'], colors: [BLUE, RED], groups: ['추', '수레', '전체'], signed: false, range: 0.2, read: milli },
   },
   menus: {
@@ -136,7 +136,7 @@ export default {
     };
     const INK = { velocity: 0x1f9d6b, weight: 0x9a3fc2, normal: 0x3f6fd0, mark: 0x1d2440 };
     const UP = new T.Vector3(0, 1, 0), DOWN = new T.Vector3(0, -1, 0), RIGHT = new T.Vector3(1, 0, 0), LEFT = new T.Vector3(-1, 0, 0), aim = new T.Vector3();
-    const working = () => ctx.values.scene === 'work', swinging = () => ctx.values.scene === 'spring', hanging = () => ctx.values.way !== 'level';
+    const hanging = () => ctx.values.way !== 'level';   // the spring is upright
 
     // ---------- the track: a smooth curve through the tops of five posts, in the upright plane through the middle of the bench ----------
     // XS: where the posts stand (units). The curve between two posts is a cubic that takes the slope at each post from its
@@ -238,7 +238,7 @@ export default {
     const heat = () => (run.state === 'ready' || !run.mu ? 0 : Math.max(0, run.m * G * (run.top / 10 - levelOf()) - energies(shape(run.x, here).y, run.v)[2]));
     function bars() {
       const chart = ctx.charts.energy, ready = run.state === 'ready', warm = ready ? rubbing() > 0 : run.mu > 0;
-      chart.names = warm ? ['위치 에너지', '운동 에너지', '합', '열'] : ['위치 에너지', '운동 에너지', '합'];   // "열": what has turned into heat, named as in the graph against time chart.colors = [BLUE, RED, GOLD, GREY];
+      chart.names = warm ? ['위치 에너지', '운동 에너지', '합', '열'] : ['위치 에너지', '운동 에너지', '합'];   // "열": what has turned into heat, named and coloured as in the graph against time
       const now = energies(shape(run.x, here).y, run.v, ready ? ctx.values.mass : run.m, ready ? (rolling() ? 5 / 7 : 1) : run.share);
       chart.set(0, warm ? [...now, heat()] : now);
     }
@@ -362,6 +362,7 @@ export default {
     }
     const work = {
       run: haul,
+      handles: [...gates.flatMap((gate) => gate.handles), hangHandle, pileHandle, wagonBody],
       toStart() { Object.assign(haul, { state: 'ready', t: 0, s: 0, v: 0, passed: 0 }); workBars(); moved = true; },
       launch() {
         const v = ctx.values, a = v.hang * G / (v.cartMass + v.hang);
@@ -577,12 +578,12 @@ export default {
       end(held) { if (held.moved && !ctx.locked.has('pull')) ctx.setPlaying(true); },   // let go, it swings at once
       changed(id) {
         if (!['way', 'bob', 'stiff', 'pull'].includes(id)) return;
+        if (id === 'way') { for (const trace of Object.values(ctx.traces)) trace.clear(); frame(true); }   // the spring is turned: empty graphs, and the view for it
         if (ctx.values.pull > reach() + 1e-9) {   // the weight would come off its hook at the top
           ctx.set('pull', reach());
           if (!grab) say('최고점에서도 용수철이 늘어나 있도록 당긴 길이를 줄였습니다', 0.5, REST + 1.2, 3);
           return;                                 // which comes back here
         }
-        if (id === 'way') { for (const trace of Object.values(ctx.traces)) trace.clear(); frame(true); }
         if (swing.state !== 'ready') ctx.emit('action', 'reset'); else spring.toStart();   // a run under way is taken back first
       },
       draw() {
@@ -671,7 +672,6 @@ export default {
         if (run.state !== 'ready') ctx.emit('action', 'reset'); else toStart();   // a run under way is taken back first
       },
     };
-    work.handles = [...gates.flatMap((gate) => gate.handles), hangHandle, pileHandle, wagonBody];
     const SCENES = { coaster, work, spring }, now = () => SCENES[ctx.values.scene];
     view.setTool({
       pick(r) {
@@ -714,8 +714,8 @@ export default {
     // view comes round to that end. An upright screen looks along the track.
     const tall = () => window.matchMedia('(max-aspect-ratio: 4/5)').matches;
     function frame(turn = false) {   // turn: come round to the side this arrangement is looked at from
-      if (working()) { view.look(tall() ? { target: [5.5, -2.6, 0], r: 24, theta: 1.15, phi: 1.3 } : { target: [5, -2.4, 0], r: 25.5, theta: 0.85, phi: 1.3 }); return; }
-      if (swinging()) {   // the stand is tall and narrow; the level spring is low and short
+      if (working(ctx.values)) { view.look(tall() ? { target: [5.5, -2.6, 0], r: 24, theta: 1.15, phi: 1.3 } : { target: [5, -2.4, 0], r: 25.5, theta: 0.85, phi: 1.3 }); return; }
+      if (springy(ctx.values)) {   // the stand is tall and narrow; the level spring is low and short
         view.look(hanging() ? (tall() ? { target: [0.6, 4.8, 0], r: 22, theta: 0.15, phi: 1.42 } : { target: [-0.6, 4.2, 0], r: 15.5, theta: 0.2, phi: 1.42 })
           : tall() ? { target: [0, 1.2, 0], r: 15, theta: 0.2, phi: 1.2 } : { target: [0.2, 1.1, 0], r: 9.5, theta: 0.2, phi: 1.2 });
         return;
@@ -735,7 +735,7 @@ export default {
     });
     ctx.on('mode', () => {   // the ball and the moved level belong to the advanced mode
       if (!ctx.advanced) { if (ctx.values.body !== 'cart') ctx.set('body', 'cart'); if (ctx.values.ground !== 0) ctx.set('ground', 0); if (ctx.values.mu !== 0.1) ctx.set('mu', 0.1); }
-      if (ctx.values.scene === 'coaster') toStart();
+      if (ctx.values.scene === 'coaster') { if (run.state !== 'ready') ctx.emit('action', 'reset'); else toStart(); }   // a run under way is taken back first: it stops there
       moved = true;
     });
 

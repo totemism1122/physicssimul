@@ -64,7 +64,7 @@ export default {
       { id: 'step', label: '한 단계씩', kind: 'action', advanced: true },
     ],
     layers: [
-      { id: 'warmth', label: '접촉면 온도', kind: 'toggle', when: sloping },   // on from the start (see create)
+      { id: 'warmth', label: '접촉면 온도', kind: 'toggle', value: true, when: sloping },   // on from the start: where the box has rubbed is what this is about
       { id: 'particles', label: '입자 운동', kind: 'toggle' },
       { id: 'velocityArrow', label: '속도 화살표', kind: 'toggle' },
       { id: 'heightMark', label: '높이', kind: 'toggle', when: sloping },
@@ -105,7 +105,6 @@ export default {
   create({ T, kit, world, view, ctx }) {
     const { mat, add, box, cyl, canvasTexture, roundedBox } = kit;
     world.userData.things.visible = false;   // the boards take the whole bench
-    ctx.values.warmth = true;                // where the box has rubbed shows from the start: it is what this is about
     const G = 9.8, RAD = Math.PI / 180;
     const M = { steel: mat(0x8f96a8), dark: mat(0x3a4057), body: mat(0xd9584a), knob: mat(0xe3a52b), brass: mat(0xc9a35a, { roughness: 0.7 }), brassDark: mat(0xad8843, { roughness: 0.7 }), wood: mat(0xd9b38c, { roughness: 0.9 }), sole: mat(0x7a4a3a) };
     const INK = { velocity: 0x1f9d6b, weight: 0x9a3fc2, normal: 0x3f6fd0, rub: 0xc8571f, mark: 0x1d2440 };
@@ -126,14 +125,14 @@ export default {
       }
     });
     const rig = new T.Group(); world.add(rig);
-    const level = add(rig, box(END - FOOT, TOP, WIDE), M.wood, (FOOT + END) / 2, TOP / 2, 0);
+    add(rig, box(END - FOOT, TOP, WIDE), M.wood, (FOOT + END) / 2, TOP / 2, 0);
     add(rig, new T.PlaneGeometry(END - FOOT, STRIP.wide), mat(0xffffff, { map: rule(END - FOOT, false) }), (FOOT + END) / 2, TOP + 0.003, STRIP.z, false).rotation.x = -Math.PI / 2;
     add(rig, box(0.25, 0.7, WIDE), M.dark, END + 0.125, 0.35, 0);                               // the end of the board
     add(rig, cyl(0.07, 0.07, WIDE + 0.1, 14).rotateX(Math.PI / 2), M.steel, FOOT, TOP - 0.05, 0);   // the hinge
     const ramp = new T.Group(); ramp.position.set(FOOT, TOP, 0); rig.add(ramp);                  // its upper face runs from the hinge along −x
     add(ramp, box(LONG, TOP, WIDE), M.wood, -LONG / 2, -TOP / 2, 0);
     add(ramp, new T.PlaneGeometry(LONG, STRIP.wide), mat(0xffffff, { map: rule(LONG, true) }), -LONG / 2, 0.003, STRIP.z, false).rotation.x = -Math.PI / 2;
-    const knob = add(ramp, new T.SphereGeometry(0.17, 18, 12), M.knob, -LONG - 0.1, -TOP / 2, 0);   // what the incline is raised by
+    add(ramp, new T.SphereGeometry(0.17, 18, 12), M.knob, -LONG - 0.1, -TOP / 2, 0);   // what the incline is raised by
     const tiltHandle = add(ramp, box(1.1, 1.1, WIDE + 0.4), M.dark, -LONG - 0.1, -TOP / 2, 0, false, false); tiltHandle.visible = false;
     tiltHandle.userData.grip = { kind: 'tilt' };
     const prop = add(rig, cyl(0.06, 0.06, 1, 12).translate(0, 0.5, 0), M.steel, 0, 0, -0.5), propFoot = add(rig, box(0.7, 0.06, 0.9), M.dark, 0, 0.03, -0.5);   // holds the incline up
@@ -286,7 +285,7 @@ export default {
       },
       end(held) { if (held.kind === 'crate' && held.moved && !ctx.locked.has('along')) ctx.setPlaying(true); },   // let go, the box sets off at once
       changed(id) {
-        if (id === 'surface' && ctx.advanced) { ctx.set('mu', muOf(ctx.values.surface)); return; }   // a board is chosen: its coefficient is set
+        if (id === 'surface' && ctx.values.mu !== muOf(ctx.values.surface)) { ctx.set('mu', muOf(ctx.values.surface)); return; }   // a board is chosen: its coefficient is set, in the basic mode too, so that the advanced mode starts from the board in use (which comes back here)
         if (!['along', 'angle', 'mass', 'surface', 'mu'].includes(id)) return;
         if (run.state !== 'ready') ctx.emit('action', 'reset'); else slope.toStart();   // a run under way is taken back first
       },
@@ -561,6 +560,7 @@ export default {
     });
     ctx.on('mode', () => {   // the coefficient of friction set by hand and a pot that takes heat belong to the advanced mode
       if (!ctx.advanced && ctx.values.potHeat !== 0) ctx.set('potHeat', 0);
+      if (!ctx.advanced && ctx.values.mu !== muOf(ctx.values.surface)) ctx.set('mu', muOf(ctx.values.surface));   // back to the coefficient of the board that is chosen
       if (now().run.state === 'ready') now().toStart();
       if (!ctx.advanced && fall.pot) joule.toStart();
       moved = true;

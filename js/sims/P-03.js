@@ -169,16 +169,16 @@ export default {
     const springHandle = add(world, box(1, 0.6, 0.7), M.dark, 0, 0.78, 0, false, false); springHandle.visible = false;   // between the carts: pressing it changes who carries the plunger
     springHandle.userData.grip = { kind: 'spring' };
     // a pusher: a block held in the hand, with a spring and a pad that rests against cart B
-    function buildPusher(key, name, material, way) {
+    function buildPusher(name, material, way) {
       const g = new T.Group(); world.add(g);
-      const block = add(g, roundedBox(0.62, 0.62, 0.62, 0.08), material, 0, 0.78, 0);
+      add(g, roundedBox(0.62, 0.62, 0.62, 0.08), material, 0, 0.78, 0);
       for (const z of [-1, 1]) { const t = tag(name, 0.36); t.position.set(0, 0.78, z * 0.36); if (z < 0) t.rotation.y = Math.PI; g.add(t); }
       const handle = add(g, box(1.1, 1.1, 1.0), M.dark, 0, 0.78, 0, false, false); handle.visible = false;
-      const pusher = { key, name, group: g, way, id: `force${name}`, plunger: buildPlunger(g, way * 0.35, way) };
+      const pusher = { name, group: g, way, id: `force${name}`, plunger: buildPlunger(g, way * 0.35, way), handle };
       handle.userData.grip = { kind: 'push', pusher };
-      return Object.assign(pusher, { handle, block });
+      return pusher;
     }
-    const PA = buildPusher('a', 'A', M.a, 1), PC = buildPusher('c', 'C', M.c, -1);
+    const PA = buildPusher('A', M.a, 1), PC = buildPusher('C', M.c, -1);
 
     // ---------- the fan and the rocket of the third arrangement, on cart A ----------
     const drive = new T.Group(); A.group.add(drive);
@@ -383,7 +383,7 @@ export default {
         fan.visible = !isRocket; rocket.visible = isRocket;
         const set = isRocket ? (v.jet - 2) / 6 : (v.power - 0.5) / 2.5;   // the lever: from its lowest to its highest
         stem.scale.y = 0.2 + 0.75 * set; knob.position.y = CART.deck + stem.scale.y;
-        if (isRocket) tank.scale.y = Math.max(0.02, (now.m - (ready ? v.massA : run.dry)) * 0.5);   // 5 cm of tank for each 100 g of fuel left
+        if (isRocket) tank.scale.y = Math.max(0.02, (now.m - (ready ? v.massA : run.dry)) * 0.5);   // 5 cm of tank for each kg of fuel left
         else blades.rotation.x = running ? run.t * (10 + 12 * run.F) : 0;
         // what is thrown out drifts back from the cart while it pushes
         const out = isRocket ? 0.78 : CART.deck + 0.8, from = now.xA - (isRocket ? 1.0 : 0.85);
@@ -396,7 +396,7 @@ export default {
         puffs.instanceMatrix.needsUpdate = true;
         const thing = isRocket ? '가스' : '공기', name = isRocket ? '로켓' : '수레';
         mark(0, v.pair && f > 0 && v.bodyT !== 'b', now.xA - 0.2, out + 0.55, 1, f, INK.a, `${thing}가 ${name}${isRocket ? '을' : '를'} 미는 힘`, now.xA + 0.4, out + 0.7, GENTLE);
-        mark(1, v.pair && f > 0 && v.bodyT !== 'a', from, out - 0.45, -1, f, INK.air, `${name}${isRocket ? '이' : '가'} ${thing}${isRocket ? '를' : '를'} 미는 힘`, from - 1.2, out - 0.6, GENTLE);
+        mark(1, v.pair && f > 0 && v.bodyT !== 'a', from, out - 0.45, -1, f, INK.air, `${name}${isRocket ? '이' : '가'} ${thing}를 미는 힘`, from - 1.2, out - 0.6, GENTLE);
         figures(A, v.massA, now.m, now.vA, running ? f : 0, ready, 1, isRocket ? 1.3 : 1.1);
       },
     };
@@ -414,8 +414,9 @@ export default {
       if (cart.rate.visible) { cart.rate.position.set(x, high + 0.9, 0); cart.rate.setLength(Math.max(0.3, PER_RATE * Math.abs(rate))); cart.rate.aim(rate > 0 ? RIGHT : LEFT); }
       cart.label.show(v.numbers);
       if (!v.numbers) return;
-      cart.spot.set(x + way * 0.9, high + 1.2, 0);   // before the start the carts are held still: only the mass is shown
+      cart.spot.set(x + way * 0.9, high + 1.2, 0);
       const name = scene() === 'thrust' ? '수레' : cart.name, digits = scene() === 'thrust' && ctx.values.engine === 'rocket' ? 2 : 1;
+      // before the start the carts are held still: only the mass is shown
       cart.label.write(ready ? `<b>${name}</b>  ${mass.toFixed(digits)} kg`
         : `<b>${name}</b>  ${mass.toFixed(digits)} kg<br>받는 힘 ${signed(force, 1)} N<br>가속도 ${signed(rate)} m/s²<br>속도 ${signed(speed)} m/s`);
     }
@@ -505,11 +506,11 @@ export default {
       if (run.state === 'run') advance(dt);
     });
     ctx.on('action', (id) => { if (id === 'reset') toStart(); });
-    const SETTINGS = ['partner', 'pusher', 'massA', 'massB', 'press', 'forceA', 'forceC', 'engine', 'power', 'jet', 'fuel'];
+    const SETTINGS = { push: ['partner', 'pusher', 'massA', 'massB', 'press'], balance: ['forceA', 'forceC', 'massB'], thrust: ['engine', 'power', 'jet', 'fuel', 'massA'] };   // what each arrangement is set by
     ctx.on('change', (id) => {
       moved = true;
       if (id === 'scene') { for (const trace of Object.values(ctx.traces)) trace.clear(); ctx.emit('action', 'reset'); return; }   // the other arrangement starts with empty graphs
-      if (!SETTINGS.includes(id)) return;
+      if (!SETTINGS[scene()].includes(id)) return;   // what belongs to another arrangement (the rocket, put away when the advanced mode is left) does not touch this one
       if (run.state !== 'ready') ctx.emit('action', 'reset'); else toStart();   // a run under way is taken back first
     });
     ctx.on('mode', () => { if (!ctx.advanced && ctx.values.engine !== 'fan') ctx.set('engine', 'fan'); moved = true; });   // the rocket belongs to the advanced mode

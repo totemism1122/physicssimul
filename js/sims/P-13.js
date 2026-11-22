@@ -332,7 +332,7 @@ export default {
     function endCycle() {   // one line in the comparison table for each time in and out
       const v = ctx.values, clean = cycleClean, most = peak;
       cycleClean = true; peak = 0;
-      if (!clean || v.fall || v.lying) return;
+      if (!clean || v.lying) return;   // (a magnet that is let fall does not come here)
       const row = [v.autoSpeed.toFixed(1), String(v.strength), String(v.turns), most > 1 ? '끝까지' : (most * 10).toFixed(1)];
       const rows = ctx.tables.compare.rows, last = rows[rows.length - 1];
       ctx.tables.compare.add(row, Boolean(last) && last.slice(0, 3).every((cell, i) => cell === row[i]));

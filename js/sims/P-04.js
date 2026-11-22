@@ -150,7 +150,7 @@ export default {
       const pin = new T.Group(); g.add(pin);
       add(pin, cyl(0.02, 0.02, 0.22, 8), M.steel, side * (CART.half - 0.18), CART.deck + 0.11, 0.24);
       add(pin, new T.SphereGeometry(0.06, 14, 10), M.dark, side * (CART.half - 0.18), CART.deck + 0.24, 0.24);
-      return { name, side, group: g, weights, springy, sticky, pin, count: 0, bumper: 'spring' };
+      return { name, side, group: g, weights, springy, sticky, pin, count: 0 };
     }
     const carts = [buildCart('A', M.a, 1), buildCart('B', M.b, -1)];
 
@@ -474,7 +474,7 @@ export default {
         if (!apart() && !(onBench ? discs : carts).some((body) => body.speed)) {
           tip.write(`${onBench ? '원판을' : '수레를'} 뒤로 당겨 속력을 정하세요`); tipSpot.set(0, onBench ? 1.7 : 2.6, 0); tip.show(true); tipTime = 2.5; stopSoon = true; return;
         }
-        launch();
+        ctx.seek(0); launch();   // every run is timed from 0, a second one after the first as well
       }
     });
     ctx.on('tick', (t, dt) => {

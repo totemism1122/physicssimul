@@ -1,4 +1,4 @@
-// P-02 Force and acceleration (3D): a cart on a low-friction track, in two arrangements chosen in the menu.
+// P-02 Force and acceleration (3D): a cart on a low-friction track, in three arrangements chosen in the menu.
 //
 // Force and acceleration: the cart is pulled along by a spring balance that keeps the same reading, after the
 // textbook's figure of a body pulled with forces F, 2F, 3F and of bodies m, 2m, 3m. The force is set by pulling
@@ -21,7 +21,10 @@ const minus = (text) => text.replace('-', '−');
 const RUNS = [[0, GOLD, '이번'], [1, DIM, '앞'], [2, FAINT, '그 앞']];
 const lines = (kind) => [{ trace: 'axis', color: 'rgba(0, 0, 0, 0)' }, ...RUNS.map(([i, color, name]) => ({ trace: kind + i, color, name }))];
 const reading = (digits, unit) => (value) => (value === undefined ? '–' : `${minus(value.toFixed(digits))} ${unit}`);
-const KINDS = { v: { window: 6, range: 1, read: reading(2, 'm/s') }, x: { window: 6, range: 0.5, read: reading(2, 'm') }, a: { window: 6, range: 1, read: reading(2, 'm/s²') } };
+// LONGEST: the most seconds a graph holds. A run with much resistance may take over 8 s, and is kept whole; the time
+// axis is 1.5 s or 6 s long for the usual runs and 24 s only for those.
+const LONGEST = 24;
+const KINDS = { v: { window: LONGEST, range: 1, read: reading(2, 'm/s') }, x: { window: LONGEST, range: 0.5, read: reading(2, 'm') }, a: { window: LONGEST, range: 1, read: reading(2, 'm/s²') } };
 const pulled = (values) => values.scene === 'pull', braked = (values) => values.scene === 'brake', hung = (values) => values.scene === 'hang';   // which arrangement an item of a menu belongs to
 const bars = (name, digits) => ({ names: [name], colors: [GOLD], groups: [''], signed: false, range: 0.5, read: (value) => value.toFixed(digits) });
 
@@ -33,7 +36,7 @@ export default {
   camera: { target: [1.2, 0.9, 0], r: 16.5, theta: 0.2, phi: 1.1, rMax: 34 },
   stepTime: 0.02,                 // "one step at a time" moves on by this many seconds
   traces: {
-    axis: { window: 6, range: 0.001, read: () => '' },
+    axis: { window: LONGEST, range: 0.001, read: () => '' },
     ...Object.fromEntries(Object.entries(KINDS).flatMap(([kind, options]) => RUNS.map(([i]) => [kind + i, options]))),
   },
   charts: {
@@ -210,7 +213,7 @@ export default {
     const forceArrow = kit.arrow(INK.force, 0.045), dragArrow = kit.arrow(INK.drag, 0.04), speedArrow = kit.arrow(INK.velocity, 0.045), rateArrow = kit.arrow(INK.rate, 0.045);
     world.add(forceArrow, dragArrow, speedArrow, rateArrow);
     const NEWTON = 0.28, PER_SPEED = 0.5, PER_RATE = 0.28;   // lengths of the arrows for 1 N, 1 m/s, 1 m/s^2
-    const GHOSTS = 24;
+    const GHOSTS = 44;   // enough for the slowest run (0.2 s apart for over 8 s)
     const ghosts = new T.InstancedMesh(bodyGeo, new T.MeshBasicMaterial({ color: 0xd9584a, transparent: true, opacity: 0.2, depthWrite: false }), GHOSTS);
     ghosts.count = 0; ghosts.frustumCulled = false; world.add(ghosts);
     const spot = new T.Vector3(), label = view.label(spot, true, 0.2), tipSpot = new T.Vector3(), tip = view.label(tipSpot);
@@ -329,7 +332,8 @@ export default {
 
     // ---------- handling ----------
     // Pulled along: the ring of the balance is pulled out. Braking: the cart is pulled back, and the lever of the brake
-    // is raised or lowered. In both, the pile of weights grows and shrinks.
+    // is raised or lowered. Cart and weight: the hanging pile grows and shrinks, and a press on the cart lets it go.
+    // In all three, the pile of weights on the cart grows and shrinks.
     const ray = new T.Raycaster(), upright = new T.Plane(new T.Vector3(0, 0, 1), 0), level = new T.Plane(new T.Vector3(0, 1, 0), -0.8), hit = new T.Vector3();
     // where the pointer is: along the track (x) and "up" (height, or away from the viewer when seen from above)
     function pointer(r) {
@@ -393,10 +397,11 @@ export default {
       if (run.state === 'run') advance(dt);
     });
     ctx.on('action', (id) => { if (id === 'reset') toStart(); });
+    const SETTINGS = { pull: ['force', 'mass', 'drag'], brake: ['speed', 'mass', 'brake'], hang: ['hang', 'mass'] };   // what each arrangement is set by
     ctx.on('change', (id) => {
       moved = true;
       if (id === 'scene') { clearRuns(); ctx.emit('action', 'reset'); charts(); view.look(looks()); return; }   // the other arrangement starts with empty graphs
-      if (!['force', 'mass', 'drag', 'speed', 'brake', 'hang'].includes(id)) return;
+      if (!SETTINGS[scene()].includes(id)) return;   // what belongs to another arrangement (set back when the advanced mode is left) does not touch this one
       if (run.state !== 'ready') ctx.emit('action', 'reset'); else toStart();   // a run under way is taken back first
       charts();
     });

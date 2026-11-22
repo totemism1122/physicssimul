@@ -5,9 +5,9 @@
 // above, grows and lifts them. The work it does is its pressure times the growth of its volume, W = P ΔV: the area
 // under the line in the graph of pressure against volume.
 // Advanced: the plate may be a cold one, which takes heat from the gas; the piston may be pinned, so that the volume
-// stays as it is and only the pressure changes; or the weights on the piston are changed while the gas is kept at the
-// temperature of a plate under it (all the heat it takes in becomes work); or the cylinder may be wrapped so that no heat passes, and the gas is
-// pressed or let out by putting weights on the piston or taking them off.
+// stays as it is and only the pressure changes; the weights on the piston may be changed while the gas is kept at
+// the temperature of a plate under it, so that all the heat it takes in becomes work; or the cylinder may be wrapped
+// so that no heat passes, and the gas is pressed or let out by putting weights on the piston or taking them off.
 //
 // A heat engine: an engine stands between a hot body and a cold one, after the textbook's figure. With both against
 // it, it takes heat Q1 from the hot one each turn, does the work W and gives the rest, Q2, to the cold one:
@@ -24,8 +24,9 @@ const minus = (text) => text.replace('-', '−');
 const signed = (value) => (Number(one(value)) > 0 ? '+' : '') + minus(one(value));   // with its sign: +90.0, −45.0, 0.0
 // which arrangement an item of a menu belongs to: the gas in its cylinder (and there the advanced ones), or the engine
 const inGas = (values) => values.scene !== 'engine', inEngine = (values) => values.scene === 'engine';
-const wrapped = (values) => inGas(values) && (values.process === 'adiabatic' || values.process === 'isothermal');   // worked by changing the weights: no plate to choose, no time to set
-const cold = (values) => inGas(values) && !wrapped(values) && values.source === 'cool', hot = (values) => inGas(values) && !wrapped(values) && values.source !== 'cool';
+const byWeights = (process) => process === 'adiabatic' || process === 'isothermal';   // worked by changing the weights: no plate to choose, no time to set
+const wrapped = (values) => inGas(values) && byWeights(values.process), plated = (values) => inGas(values) && !byWeights(values.process);
+const cold = (values, advanced) => advanced && values.source === 'cool';   // the plate in use is the cold one
 const PROCESSES = [{ id: 'isobaric', label: '등압' }, { id: 'isochoric', label: '등적' }, { id: 'isothermal', label: '등온' }, { id: 'adiabatic', label: '단열' }];
 
 export default {
@@ -47,19 +48,18 @@ export default {
     vars: [
       { id: 'scene', label: '장면 선택', kind: 'choice', value: 'gas', options: [{ id: 'gas', label: '기체가 하는 일' }, { id: 'engine', label: '열기관과 열효율' }] },
       { id: 'process', label: '과정', kind: 'choice', value: 'isobaric', advanced: true, when: inGas, options: PROCESSES },
-      { id: 'source', label: '판의 종류', kind: 'choice', value: 'heat', advanced: true, when: (v) => inGas(v) && !wrapped(v), options: [{ id: 'heat', label: '가열판' }, { id: 'cool', label: '냉각판' }] },
+      { id: 'source', label: '판의 종류', kind: 'choice', value: 'heat', advanced: true, when: plated, options: [{ id: 'heat', label: '가열판' }, { id: 'cool', label: '냉각판' }] },
       { id: 'weights', label: '추의 개수', kind: 'slider', min: 0, max: 5, step: 1, value: 0, unit: '개', when: inGas },   // each presses 10 kPa more
       { id: 'weightsTo', label: '나중 추의 개수', kind: 'slider', min: 0, max: 5, step: 1, value: 3, unit: '개', advanced: true, when: wrapped },
-      { id: 'heat', label: '가열 시간', kind: 'slider', min: 1, max: 5, step: 1, value: 3, unit: ' s', when: hot },
-      { id: 'chill', label: '냉각 시간', kind: 'slider', min: 1, max: 5, step: 1, value: 3, unit: ' s', advanced: true, when: cold },
-      { id: 'burner', label: '가열판 놓기', kind: 'toggle', when: hot },
-      { id: 'cooler', label: '냉각판 놓기', kind: 'toggle', advanced: true, when: cold },
+      // how long the plate works, and whether it is under the table: named after the plate in use
+      { id: 'seconds', label: (v, advanced) => (cold(v, advanced) ? '냉각 시간' : '가열 시간'), kind: 'slider', min: 1, max: 5, step: 1, value: 3, unit: ' s', when: plated },
+      { id: 'plate', label: (v, advanced) => (cold(v, advanced) ? '냉각판 놓기' : '가열판 놓기'), kind: 'toggle', when: plated },
       { id: 'intake', label: '한 순환에 받는 열', kind: 'slider', min: 100, max: 500, step: 100, value: 300, unit: ' J', when: inEngine },
       { id: 'effic', label: '열효율', kind: 'slider', min: 10, max: 50, step: 5, value: 30, unit: ' %', when: inEngine },
       { id: 'hotT', label: '고열원의 온도', kind: 'slider', min: 400, max: 1000, step: 100, value: 600, unit: ' K', advanced: true, when: inEngine },
       { id: 'coldT', label: '저열원의 온도', kind: 'slider', min: 200, max: 400, step: 50, value: 300, unit: ' K', advanced: true, when: inEngine },
       { id: 'hotOn', label: '고열원 대기', kind: 'toggle', when: inEngine },
-      { id: 'coldOn', label: '저열원 대기', kind: 'toggle', when: inEngine },   // on when the engine is first shown (see create)
+      { id: 'coldOn', label: '저열원 대기', kind: 'toggle', when: inEngine },   // switched on whenever the engine is shown (see create)
     ],
     graph: [
       // the area under the line is the work done by the gas: counted with its sign, so that it is negative when the gas is pressed together
@@ -74,8 +74,8 @@ export default {
       { id: 'step', label: '한 단계씩', kind: 'action', advanced: true },
     ],
     layers: [
-      { id: 'particles', label: '입자 운동', kind: 'toggle' },   // on from the start (see create)
-      { id: 'flow', label: '열과 일 화살표', kind: 'toggle' },   // bands as wide as the heat and the work; on when the engine is first shown
+      { id: 'particles', label: '입자 운동', kind: 'toggle', value: true },   // on from the start: the gas cannot be seen otherwise
+      { id: 'flow', label: '열과 일 화살표', kind: 'toggle' },   // bands as wide as the heat and the work; switched on whenever the engine is shown
       { id: 'numbers', label: '값', kind: 'toggle' },
       { id: 'forceArrow', label: '힘 화살표', kind: 'toggle', advanced: true, when: inGas },
     ],
@@ -115,9 +115,8 @@ export default {
   create({ T, kit, world, view, ctx }) {
     const { mat, add, box, cyl, canvasTexture } = kit;
     world.userData.things.visible = false;   // the apparatus takes the middle of the bench
-    ctx.values.particles = true;             // the gas cannot be seen otherwise
     const M = { steel: mat(0x8f96a8), dark: mat(0x3a4057), body: mat(0xd9584a), brass: mat(0xc9a35a, { roughness: 0.7 }), brassDark: mat(0xad8843, { roughness: 0.7 }), plate: mat(0x6e7486, { roughness: 0.6 }) };
-    const INK = { push: 0x3f6fd0, press: 0x9a3fc2, mark: 0x1d2440 };
+    const INK = { push: 0x3f6fd0, press: 0x9a3fc2 };
     const UP = new T.Vector3(0, 1, 0), DOWN = new T.Vector3(0, -1, 0);
 
     // ==================== the work of a gas ====================
@@ -173,9 +172,8 @@ export default {
     // the colours of the plate's top when it is idle and when it works, hot and cold; and of the particles from cold to hot
     const TOP = { hot: [new T.Color(0x4a4f61), new T.Color(0xff5a2a)], cold: [new T.Color(0x8fb4d6), new T.Color(0xdff4ff)], even: [new T.Color(0x8fc7a4), new T.Color(0xb9e6c8)] };   // even: a plate that keeps the temperature of the room
     const CHILL = new T.Color(0x2f56c8), CALM = new T.Color(0x3f7fe6), QUICK = new T.Color(0xf0642a);
-    // the particles of the gas: they fly about, faster when it is hotter, and are turned back by the walls and the piston
-    // A swarm of particles in an upright cylinder of the given radius. fly(dt, top, speed): each flies on in a straight
-    // line for dt seconds and is turned back by the wall, the floor and the piston (top: its height above the floor).
+    // The particles of a gas: a swarm in an upright cylinder of the given radius. fly(dt, top, speed): each flies on in a
+    // straight line for dt seconds and is turned back by the wall, the floor and the piston (top: its height above the floor).
     function swarm(count, radius, room) {
       const motes = Array.from({ length: count }, () => {
         const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * (radius - 0.08), b = Math.random() * 6.283, c = Math.acos(2 * Math.random() - 1);
@@ -224,9 +222,8 @@ export default {
     // start; P2: the pressure at the end (adiabatic); P, V, T now; Q: heat taken in, W: work done (J).
     const gas = { state: 'ready', kind: 'isobaric', sign: 1, t: 0, until: 3, P1: 100, V1: 3, P2: 100, P: 100, V: 3, T: 300, Q: 0, W: 0, short: false, seen: [3, 100], beat: -1 };
     const RATE = 75, ROOM = 300, FLOOR = 100, BEAT = 0.05, PACE = 1.2;   // RATE: of the plate (J/s); BEAT: how often the temperature is kept; PACE: seconds to put one weight on or take it off
-    const kindNow = () => (ctx.advanced ? ctx.values.process : 'isobaric'), byWeights = (kind = kindNow()) => kind === 'adiabatic' || kind === 'isothermal';   // byWeights: worked by changing the weights
-    const cooling = () => ctx.advanced && !byWeights() && ctx.values.source === 'cool';
-    const placed = () => (cooling() ? 'cooler' : 'burner');   // which toggle says that the plate in use is under the table
+    const kindNow = () => (ctx.advanced ? ctx.values.process : 'isobaric');           // the process that is set: the basic mode has the one
+    const cooling = () => !byWeights(kindNow()) && cold(ctx.values, ctx.advanced);    // the plate in use takes heat from the gas
     // the gas t seconds into the process
     function at(t) {
       if (gas.kind === 'adiabatic') {
@@ -245,7 +242,6 @@ export default {
 
     // ---------- state ----------
     let moved = true, stopSoon = false, tipTime = 0, framed = false, grab = null, carry = null;   // carry: where the plate is while it is in hand
-    let seated = false;   // whether the plate is under the table, whichever kind it is (the frame switches off the toggle of the kind not in use)
     function say(text, x, y, seconds = 0) { tip.write(text); tipSpot.set(x, y, 0); tip.show(true); tipTime = seconds; moved = true; }
     function bars() { ctx.charts.heat.set(0, [gas.Q, gas.W, gas.Q - gas.W]); }
     const tall = () => window.matchMedia('(max-aspect-ratio: 4/5)').matches;
@@ -255,7 +251,7 @@ export default {
       toStart() {
         const v = ctx.values, kind = kindNow(), sign = cooling() ? -1 : 1, P1 = 100 + 10 * v.weights, V1 = ROOM / P1;
         // how long it goes on: as set, but a cold plate stops when the gas is as cold as it is; weights go on or off one at a time
-        const rate = kind === 'isochoric' ? RATE / 1.5 : RATE / 2.5, most = sign < 0 ? (ROOM - FLOOR) / rate : Infinity, set = sign < 0 ? v.chill : v.heat;
+        const rate = kind === 'isochoric' ? RATE / 1.5 : RATE / 2.5, most = sign < 0 ? (ROOM - FLOOR) / rate : Infinity, set = v.seconds;
         const until = byWeights(kind) ? Math.max(1, Math.abs(v.weightsTo - v.weights)) * PACE : Math.min(set, most);
         Object.assign(gas, { state: 'ready', kind, sign, t: 0, until, short: !byWeights(kind) && set > most, P1, V1, P2: 100 + 10 * v.weightsTo, P: P1, V: V1, T: ROOM, Q: 0, W: 0, seen: [V1, P1], beat: -1 });
         bars(); moved = true;
@@ -265,7 +261,7 @@ export default {
         const over = [0.6, BASE + gas.V + 2.6];
         if (byWeights(gas.kind)) {
           if (gas.P2 === gas.P1) { stopSoon = true; say('나중 추의 개수를 처음과 다르게 정하면 기체가 눌리거나 늘어납니다', ...over, 3); return; }
-        } else if (!ctx.values[placed()]) {
+        } else if (!ctx.values.plate) {
           stopSoon = true; say(gas.sign < 0 ? '냉각판을 실린더 밑에 놓으면 기체가 냉각됩니다' : '가열판을 실린더 밑에 놓으면 기체가 가열됩니다', ...over, 3); return;
         }
         gas.state = 'run';
@@ -299,7 +295,7 @@ export default {
       at: () => heater.position.x,                                                   // where what is taken hold of stands
       fly(dt) { cloud.fly(dt, gas.V, 2.4 * Math.sqrt(gas.T / 300)); },             // the particles: faster when the gas is hotter
       // what a handle sets: the pile is the weights at the start, or wrapped the weights at the end
-      dial: (grip) => (grip.kind !== 'pile' ? placed() : byWeights() ? 'weightsTo' : 'weights'),
+      dial: (grip) => (grip.kind !== 'pile' ? 'plate' : byWeights(kindNow()) ? 'weightsTo' : 'weights'),
       move(p) {
         const v = ctx.values, id = grab.id;
         if (grab.kind === 'heater') {   // slid along the bench
@@ -329,12 +325,8 @@ export default {
         if (under && gas.state === 'ready') ctx.setPlaying(true);   // put in place, it works at once
       },
       changed(id) {
-        if (id === 'burner' || id === 'cooler') {   // the plate in use is put under the table or taken away; taken away while it works, the process ends there
-          if (id === placed()) { seated = ctx.values[id]; if (!seated) work.finish(); }
-          return;
-        }
-        if (!['weights', 'weightsTo', 'heat', 'chill', 'process', 'source'].includes(id)) return;
-        if (id === 'source') ctx.values[placed()] = seated;   // the other kind of plate stands where this one stood
+        if (id === 'plate') { if (!ctx.values.plate) work.finish(); return; }   // the plate is put under the table or taken away; taken away while it works, the process ends there
+        if (!['weights', 'weightsTo', 'seconds', 'process', 'source'].includes(id)) return;   // (the other kind of plate stands where the one before stood)
         if (gas.state !== 'ready') ctx.emit('action', 'reset'); else work.toStart();   // a run under way is taken back first
       },
       draw() {
@@ -344,7 +336,7 @@ export default {
         pileHandle.scale.y = 0.16 + n * SLAB + 0.5;
         pin.visible = gas.kind === 'isochoric'; sleeve.visible = closed;
         // the plate: put away when the cylinder is wrapped; a plate that keeps its temperature stays under the table and is not handled
-        heater.visible = !closed; heaterHandle.userData.off = steady; heater.position.x = steady ? 0 : carry !== null ? carry : v[placed()] ? 0 : PARK;
+        heater.visible = !closed; heaterHandle.userData.off = steady; heater.position.x = steady ? 0 : carry !== null ? carry : v.plate ? 0 : PARK;
         const tops = steady ? TOP.even : chilly ? TOP.cold : TOP.hot;
         housing.color.copy(steady ? HOUSING.even : chilly ? HOUSING.cold : HOUSING.hot); coil.material.color.copy(tops[0]).lerp(tops[1], working && !closed ? 1 : 0); lamp.material.color.set(steady ? 0x4f9d6b : chilly ? 0x3f7fe6 : 0xd9584a);
         // Heat and work as bands, each as wide as its energy so far. Heat: between the plate and the gas, upwards into the
@@ -603,7 +595,7 @@ export default {
       moved = true;
       if (id === 'scene') {   // the other arrangement starts afresh; the engine is first shown with its cold body against it and the bands of energy on
         for (const trace of Object.values(ctx.traces)) trace.clear();
-        if (ctx.values.scene === 'engine') { ctx.values.coldOn = true; ctx.values.flow = true; }
+        if (ctx.values.scene === 'engine') for (const on of ['coldOn', 'flow']) if (!ctx.values[on]) ctx.set(on, true);
         ctx.emit('action', 'reset'); work.toStart(); engine.toStart(); frame();
         return;
       }

@@ -3,6 +3,9 @@
 import { createGraph, createBars } from './graph.js';
 
 const text = (item, value) => (item.digits ? value.toFixed(item.digits) : String(value)) + (item.unit || '');
+// The name of an item: a text, or label(values, advanced) for one that depends on the arrangement
+// (one switch that is "put the hot plate" or "put the cold plate" by the plate in use).
+export const labelOf = (item, ctx) => (typeof item.label === 'function' ? item.label(ctx.values, ctx.advanced) : item.label);
 
 // ctx: the frame's shared state (values, locked, advanced, set, traces, tables).  on: { pin(), close() }.
 export function buildPanel(item, ctx, on) {
@@ -10,7 +13,7 @@ export function buildPanel(item, ctx, on) {
   el.className = `panel panel-${item.kind}${(item.plots && item.plots.length > 1) || Array.isArray(item.bars) ? ' stacked' : ''}${item.wide ? ' wide' : ''}`;
   const canLock = item.kind === 'slider' || item.kind === 'choice';
   el.innerHTML = `
-    <header><h3>${item.label}</h3>${item.kind === 'slider' ? '<output></output>' : ''}</header>
+    <header><h3>${labelOf(item, ctx)}</h3>${item.kind === 'slider' ? '<output></output>' : ''}</header>
     <div class="panel-body"></div>
     <footer class="chips">
       ${canLock ? '<button class="chip lock" type="button" aria-pressed="false">잠금</button>' : ''}
@@ -23,7 +26,7 @@ export function buildPanel(item, ctx, on) {
 
   if (item.kind === 'slider') {
     const out = el.querySelector('output');
-    body.innerHTML = `<input type="range" min="${item.min}" max="${item.max}" step="${item.step}" aria-label="${item.label}">`;
+    body.innerHTML = `<input type="range" min="${item.min}" max="${item.max}" step="${item.step}" aria-label="${labelOf(item, ctx)}">`;
     const input = body.firstChild;
     refresh = () => {
       input.value = ctx.values[item.id]; input.disabled = ctx.locked.has(item.id);
@@ -69,6 +72,10 @@ export function buildPanel(item, ctx, on) {
   pin.addEventListener('click', on.pin);
   el.querySelector('.close').addEventListener('click', on.close);
   if (lock) lock.setAttribute('aria-pressed', ctx.locked.has(item.id));
+  if (typeof item.label === 'function') {   // the name is kept in step with the arrangement as well
+    const heading = el.querySelector('h3'), values = refresh;
+    refresh = () => { const name = labelOf(item, ctx); if (heading.innerHTML !== name) heading.innerHTML = name; values(); };
+  }
   refresh();
 
   return { el, item, refresh, stop, setPinned(pinned) { pin.setAttribute('aria-pressed', pinned); el.classList.toggle('pinned', pinned); } };

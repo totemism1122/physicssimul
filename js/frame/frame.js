@@ -1,7 +1,7 @@
 // The simulation screen shared by every simulation: title, play/pause, mode buttons, fan menu,
 // detailed menu, control panels and the viewpoint bar. Each simulation supplies its menus (js/sims/*.js).
 import { createFan } from './fan.js';
-import { buildPanel } from './panel.js';
+import { buildPanel, labelOf } from './panel.js';
 import { createClock } from './clock.js';
 import { createTrace, createChart } from './graph.js';
 
@@ -67,10 +67,10 @@ export async function simScreen(found, query, setAddress) {
     tables: {},   // id -> { rows, add(row), clear() } behind a record table; the simulation adds the rows
     on(type, fn) { (listeners[type] = listeners[type] || []).push(fn); },
     emit(type, ...args) { (listeners[type] || []).forEach((fn) => fn(...args)); },
-    set(id, value) { ctx.values[id] = value; ctx.emit('change', id, value); refreshPanels(); },   // an open panel follows a value changed in the scene
+    set(id, value) { ctx.values[id] = value; ctx.emit('change', id, value); refreshPanels(); markSubmenu(); },   // an open panel and the buttons of the detailed menu follow a value changed in the scene
   };
   for (const items of Object.values(spec.menus)) for (const item of items) {
-    ctx.values[item.id] = item.kind === 'toggle' ? false : item.value;
+    ctx.values[item.id] = item.kind === 'toggle' ? item.value === true : item.value;   // a toggle is off at first, unless value: true
     if (item.kind === 'table') {
       const table = ctx.tables[item.id] = {
         rows: [],
@@ -134,7 +134,7 @@ export async function simScreen(found, query, setAddress) {
   function showSubmenu() {
     const items = menu ? spec.menus[menu].filter(visible) : [];
     submenu.innerHTML = items.map((item) => `
-      <button class="sub ${item.kind}" type="button" data-id="${item.id}">${item.label}</button>`).join('');
+      <button class="sub ${item.kind}" type="button" data-id="${item.id}">${labelOf(item, ctx)}</button>`).join('');
     submenu.classList.toggle('on', fan.open && items.length > 0);
     markSubmenu();
     place();
@@ -219,9 +219,9 @@ export async function simScreen(found, query, setAddress) {
       if (chosen && chosen.advanced && !ctx.advanced) ctx.set(item.id, item.value);
     }
   }
-  let listed = '';   // the items on offer, to notice when a changed value brings others
+  let listed = '';   // the items on offer and their names, to notice when a changed value brings others
   ctx.on('change', () => {
-    const now = Object.values(spec.menus).flat().filter(visible).map((item) => item.id).join();
+    const now = Object.values(spec.menus).flat().filter(visible).map((item) => (typeof item.label === 'function' ? item.id + labelOf(item, ctx) : item.id)).join();
     if (now === listed) return;
     listed = now; putAway(); showSubmenu();
   });
@@ -233,6 +233,8 @@ export async function simScreen(found, query, setAddress) {
     for (const b of el.querySelectorAll('[data-use]')) b.setAttribute('aria-pressed', (b.dataset.use === 'class') === ctx.classUse);
     fan.setDisabled('inquiry', ctx.classUse);
     if (ctx.classUse && menu === 'inquiry') { menu = null; fan.select(null); closePanel(); }
+    // an arrangement switched on from the inquiry menu could not be switched off again while that menu is out of reach
+    if (ctx.classUse) for (const item of spec.menus.inquiry) if (item.kind === 'toggle' && ctx.values[item.id]) ctx.set(item.id, false);
     putAway();
     refreshPanels();
     showSubmenu();

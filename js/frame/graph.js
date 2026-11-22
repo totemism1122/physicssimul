@@ -73,10 +73,10 @@ function keepDrawn(canvas, key, paint) {
 // A plot may hold several lines instead of one: { y, lines: [{ trace, color, name }] }.
 // span: [from, to]. The horizontal axis then shows just that stretch, whatever the record: for a quantity that may go
 // back and forth or stand still, like the volume of a gas. The record is drawn as a path from sample to sample, the
-// area is counted with its sign along that path (negative where it runs backwards), and a marked point is written
-// with its place on the axis.
+// area is counted with its sign along that path (negative where it runs backwards) and is always that of the whole
+// record, and a marked point is written with its place on the axis.
 // area: a unit (for a force against time, 'N·s'). The plot is then shaded between each line and the time axis and the
-// area is written under it, with its sign: that of the whole record on show, or up to the marked moment.
+// area is written under it, with its sign: that of the whole record on show, or (without span) up to the marked moment.
 export function createGraph(canvas, item, traces) {
   const none = createTrace();   // a plot without a record shows its axes only
   const plots = (item.plots || [{ y: item.y }]).map((plot) => ({
