@@ -16,6 +16,8 @@ const MASS = { kind: 'slider', min: 1, max: 2, step: 0.1, digits: 1, unit: ' kg'
 const SPEED = { window: 8, range: 2, read: (v) => `${speedText(v)} m/s` };
 
 export default {
+  // what is taken for granted, written on screen by the frame
+  premise: (v) => (v.friction ? '공기 저항은 없다고 봅니다' : '마찰과 공기 저항은 없다고 봅니다'),
   fixedViews: ['front', 'top'],   // along the rail (left, right) the two carts hide each other
   // tall: where an upright screen starts, looking along the rail so that all of it is in sight
   camera: { target: [0, 0.9, 0], r: 14, theta: 0.32, phi: 1.1, rMax: 34, tall: { theta: 1.1, r: 20 } },

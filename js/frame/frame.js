@@ -43,6 +43,7 @@ export async function simScreen(found, query, setAddress) {
     <div class="panel-host"></div>
     <div class="dock"></div>
     <div class="bottom">
+      <p class="premise" hidden></p>
       <div class="viewbar">
         <div class="view-kind" role="radiogroup" aria-label="시점">
           <button type="button" role="radio" data-kind="free"><i class="ring"></i>자유 시점</button>
@@ -80,8 +81,17 @@ export async function simScreen(found, query, setAddress) {
   }
   for (const [id, options] of Object.entries(spec.traces || {})) ctx.traces[id] = createTrace(options);
   for (const [id, options] of Object.entries(spec.charts || {})) ctx.charts[id] = createChart(options);
+  // What the simulation takes for granted (no friction, no heat lost, ...), written above the viewpoint bar.
+  // spec.premise: a text, or premise(values, advanced) for one that depends on the arrangement; '' or none: nothing is written.
+  const premise = $('.premise');
+  function showPremise() {
+    const text = (typeof spec.premise === 'function' ? spec.premise(ctx.values, ctx.advanced) : spec.premise) || '';
+    premise.hidden = !text; premise.innerHTML = text && `<b>가정</b>${text}`;
+  }
+  ctx.on('change', showPremise);
   // an item may belong to the advanced mode only (advanced: true) or to some arrangements only (when(values))
   const visible = (item) => (!item.advanced || ctx.advanced) && (!item.when || item.when(ctx.values));
+  showPremise();
 
   // ---------- play / pause ----------
   const clockText = $('.clock'), play = $('.play');
@@ -227,6 +237,7 @@ export async function simScreen(found, query, setAddress) {
     refreshPanels();
     showSubmenu();
     ctx.emit('mode');
+    showPremise();
   }
   $('.modes').addEventListener('click', (e) => {
     const b = e.target.closest('button');

@@ -33,6 +33,9 @@ const POSTS = ['①', '②', '③', '④', '⑤'];
 const HEIGHT = { kind: 'slider', min: 0.03, max: 1, step: 0.01, digits: 2, unit: ' m', when: coasting };
 
 export default {
+  // what is taken for granted, written on screen by the frame
+  premise: (v, advanced) => (v.scene === 'work' ? '마찰과 공기 저항은 없고, 줄과 도르래의 질량은 무시합니다' : v.scene === 'spring' ? '용수철의 질량과 마찰, 공기 저항은 없다고 봅니다'
+    : advanced && v.body === 'ball' ? '공은 미끄러지지 않고 구르며, 공기 저항은 없다고 봅니다' : v.friction ? '공기 저항은 없다고 봅니다' : '마찰과 공기 저항은 없다고 봅니다'),
   fixedViews: ['front', 'top'],
   camera: { target: [0, 2.1, 0], r: 16.5, theta: 0.2, phi: 1.2, rMax: 34 },
   stepTime: 0.02,                 // "one step at a time" moves on by this many seconds

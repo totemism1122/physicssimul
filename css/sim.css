@@ -154,6 +154,10 @@
 /* ---------- bottom: viewpoint ---------- */
 .bottom { position: absolute; left: var(--edge-l); right: var(--edge-r); bottom: calc(max(10px, 34 * var(--s)) + env(safe-area-inset-bottom, 0px)); pointer-events: none;
   display: flex; flex-direction: column; align-items: center; gap: max(8px, calc(14 * var(--s))); }
+.premise { margin: 0; max-width: 100%; padding: 0.3em 0.95em; background: var(--surface); border: 1.5px solid var(--edge); border-radius: max(12px, calc(20 * var(--s)));
+  font-size: var(--f-s); line-height: 1.45; text-align: center; word-break: keep-all; text-wrap: balance; }   /* a long one breaks between words, into lines of like length */
+.premise[hidden] { display: none; }
+.premise b { margin-right: 0.7em; color: var(--gold); }
 .viewbar { display: flex; align-items: center; min-height: max(38px, calc(68 * var(--s))); padding: max(2px, calc(10 * var(--s))) max(14px, calc(32 * var(--s)));
   background: var(--surface); border: 1.5px solid var(--edge); border-radius: max(19px, calc(34 * var(--s))); pointer-events: auto; }
 .view-kind { display: flex; gap: max(14px, calc(34 * var(--s))); }

@@ -26,6 +26,9 @@ const pulled = (values) => values.scene === 'pull', braked = (values) => values.
 const bars = (name, digits) => ({ names: [name], colors: [GOLD], groups: [''], signed: false, range: 0.5, read: (value) => value.toFixed(digits) });
 
 export default {
+  // what is taken for granted, written on screen by the frame
+  premise: (v, advanced) => (v.scene === 'hang' ? '마찰과 공기 저항은 없고, 줄과 도르래의 질량은 무시합니다' : v.scene === 'brake' ? '제동력 말고는 마찰과 공기 저항이 없다고 봅니다'
+    : advanced && v.drag > 0 ? '수레와 트랙 사이의 마찰은 없다고 봅니다' : '마찰과 공기 저항은 없다고 봅니다'),
   fixedViews: ['front', 'top'],
   camera: { target: [1.2, 0.9, 0], r: 16.5, theta: 0.2, phi: 1.1, rMax: 34 },
   stepTime: 0.02,                 // "one step at a time" moves on by this many seconds

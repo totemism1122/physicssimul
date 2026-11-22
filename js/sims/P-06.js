@@ -22,6 +22,9 @@ const ENERGY = { window: 10, range: 1, read: joules }, PATH = { window: 1.8, ran
 const SURFACES = [{ id: 'smooth', label: '매끄러운 면', mu: 0.2 }, { id: 'plain', label: '보통 면', mu: 0.3 }, { id: 'rough', label: '거친 면', mu: 0.4 }];
 
 export default {
+  // what is taken for granted, written on screen by the frame
+  premise: (v, advanced) => (v.scene !== 'joule' ? '공기 저항은 없고, 빗면 끝의 모서리에서 속력은 변하지 않는다고 봅니다'
+    : advanced && v.potHeat > 0 ? '주위로 새는 열은 없다고 봅니다' : '열량계의 열용량과 주위로 새는 열은 없다고 봅니다'),
   fixedViews: ['front', 'top'],
   camera: { target: [0, 1.5, 0], r: 18, theta: 0.15, phi: 1.25, rMax: 34 },
   stepTime: 0.02,                 // "one step at a time" moves on by this many seconds
@@ -490,13 +493,11 @@ export default {
           pull.position.set(sinker.position.x - 0.15, middle, DRUM.r + DISC.r + 0.05); pull.setLength(0.01 * fall.M * G); pull.aim(DOWN);
           if (going) { hold.position.set(sinker.position.x + 0.15, middle, DRUM.r + DISC.r + 0.05); hold.setLength(Math.max(0.3, 0.01 * HOLD * fall.v * fall.v)); hold.aim(UP); }
         }
-        // what is taken for granted is always written; the readings are added when they are asked for
-        label.show(true);
+        label.show(v.numbers);
+        if (!v.numbers) return;
         if (tall()) spot.set(POT.x + 3.6, -4.4, 2.6); else spot.set(POT.x - 1.2, 0, 2.4);   // on the front of the bench: lower on an upright screen, clear of the menu
-        const premise = fall.pot ? '주위로 새는 열은 없다고 봅니다' : '열량계의 열용량과 주위로 새는 열은 없다고 봅니다';
-        if (!v.numbers) { label.write(premise); return; }
         const lost = fall.Q + given(), cal = (HEAT * fall.mw + fall.pot) * warmer / 4.2;
-        label.write(`${premise}<br>추 ${n}개(${fall.M} kg) · 높이 ${(high / 10).toFixed(2)} m · 속력 ${fall.v.toFixed(2)} m/s<br>낙하 ${fall.n}회${ctx.advanced ? ` · 추의 운동 에너지 ${two(fall.M * fall.v * fall.v / 2)} J` : ''}<br>감소한 역학적 에너지 ${one(lost)} J<br>물이 얻은 열에너지 <b>${one(HEAT * fall.mw * warmer)} J</b>${
+        label.write(`추 ${n}개(${fall.M} kg) · 높이 ${(high / 10).toFixed(2)} m · 속력 ${fall.v.toFixed(2)} m/s<br>낙하 ${fall.n}회${ctx.advanced ? ` · 추의 운동 에너지 ${two(fall.M * fall.v * fall.v / 2)} J` : ''}<br>감소한 역학적 에너지 ${one(lost)} J<br>물이 얻은 열에너지 <b>${one(HEAT * fall.mw * warmer)} J</b>${
           fall.pot ? `<br>열량계가 얻은 열에너지 <b>${one(fall.pot * warmer)} J</b>` : ''}${
           ctx.advanced && cal > 0.05 ? `<br>열의 일당량 = ${one(lost)} J ÷ ${one(cal)} cal = <b>${(lost / cal).toFixed(2)} J/cal</b>` : ''}`);
       },

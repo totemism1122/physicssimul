@@ -71,6 +71,10 @@ function keepDrawn(canvas, key, paint) {
 // item: { x: name of the time axis, plots: [{ y: name, trace: id }] }. Several plots share the time axis, one above
 // the other. xUnit: the unit of that axis where a record is kept against something other than time ('m'; 's' if left out).
 // A plot may hold several lines instead of one: { y, lines: [{ trace, color, name }] }.
+// span: [from, to]. The horizontal axis then shows just that stretch, whatever the record: for a quantity that may go
+// back and forth or stand still, like the volume of a gas. The record is drawn as a path from sample to sample, the
+// area is counted with its sign along that path (negative where it runs backwards), and a marked point is written
+// with its place on the axis.
 // area: a unit (for a force against time, 'N·s'). The plot is then shaded between each line and the time axis and the
 // area is written under it, with its sign: that of the whole record on show, or up to the marked moment.
 export function createGraph(canvas, item, traces) {
@@ -99,19 +103,20 @@ export function createGraph(canvas, item, traces) {
       for (const line of lines) if (line.name) { g.fillStyle = line.color; g.fillText(line.name, nameX, i * each + size * 0.75); nameX += g.measureText(line.name).width + size * 0.7; }
       const lead = lines[0].trace, n = lead.t.length;
       if (!n) return;
-      const length = lead.t[n - 1] - lead.t[0], span = [lead.window / 16, lead.window / 4].find((one) => one >= length) || lead.window;
-      const start = Math.max(lead.t[0], lead.t[n - 1] - span);
+      const fixed = item.span, length = lead.t[n - 1] - lead.t[0];
+      const span = fixed ? fixed[1] - fixed[0] : [lead.window / 16, lead.window / 4].find((one) => one >= length) || lead.window;
+      const start = fixed ? fixed[0] : Math.max(lead.t[0], lead.t[n - 1] - span), end = fixed ? fixed[1] : lead.t[n - 1];
       let most = 0;
       for (const { trace } of lines) for (let k = 0; k < trace.t.length; k++) if (trace.t[k] >= start) most = Math.max(most, Math.abs(trace.v[k]));
       const range = roomFor(most, lead.range);
       const px = (t) => left + (t - start) / span * (right - left), py = (v) => mid - v / range * half;
-      if (i === 0) scale = { left, right, start, span, end: lead.t[n - 1] };
+      if (i === 0) scale = { left, right, start, span, end };
       g.save(); g.beginPath(); g.rect(left, top - size * 0.4, right - left, bottom - top + size * 0.8); g.clip();
       g.strokeStyle = 'rgba(243, 238, 223, 0.3)'; g.lineWidth = 1; g.setLineDash([2, 4]);
       g.beginPath();
       for (let k = 1; k < n; k++) if (lead.gap[k] && lead.t[k] > start) { g.moveTo(px(lead.t[k]), top); g.lineTo(px(lead.t[k]), bottom); }
       g.stroke();
-      const until = mark !== null && mark >= start && mark <= lead.t[n - 1] ? mark : Infinity;   // areas are taken up to here
+      const until = !fixed && mark !== null && mark >= start && mark <= end ? mark : Infinity;   // areas are taken up to here
       if (area) for (const { trace, color } of lines) {
         let last = -1;
         g.beginPath();
@@ -137,7 +142,7 @@ export function createGraph(canvas, item, traces) {
         g.fillStyle = INK; g.textAlign = last ? 'left' : 'right';
         g.fillText('넓이 ' + sums.join('  ') + ' ' + area, last ? left : right, (i + 1) * each + size * 0.75);
       }
-      if (mark === null || mark < start || mark > lead.t[n - 1]) return;
+      if (mark === null || mark < start || mark > end) return;
       let k = 0;                                   // the sample nearest the marked moment
       for (let j = 1; j < n; j++) if (Math.abs(lead.t[j] - mark) < Math.abs(lead.t[k] - mark)) k = j;
       let from = k;                                // time is counted from where this stretch of the record began
@@ -149,7 +154,7 @@ export function createGraph(canvas, item, traces) {
       for (const { trace } of lines) { g.beginPath(); g.arc(x, py(at(trace)), 3.5, 0, Math.PI * 2); g.fill(); }
       const text = lines.map(({ trace, name }) => `${name ? `${name} ` : ''}${trace.read(at(trace))}`).join('   ');
       notes.push(() => note(g, text, x, lines.length > 1 ? top + size * 1.6 : py(at(lead)), size, w));
-      if (i === plots.length - 1) notes.push(() => note(g, `${(lead.t[k] - lead.t[from]).toFixed(2)} ${item.xUnit || 's'}`, x, bottom + size * 1.9, size, w - g.measureText(item.x).width - size * 0.8));
+      if (i === plots.length - 1) notes.push(() => note(g, `${(fixed ? lead.t[k] : lead.t[k] - lead.t[from]).toFixed(2)} ${item.xUnit || 's'}`, x, bottom + size * 1.9, size, w - g.measureText(item.x).width - size * 0.8));
     });
     for (const write of notes) write();            // the writing goes on top of every plot
     g.fillStyle = INK; g.textAlign = 'right'; g.fillText(item.x, w - 2, h - size * 0.75);

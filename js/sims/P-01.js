@@ -28,6 +28,8 @@ const LEAN = 60;                                           // the object is tipp
 const KINDS = { ga: 6, na: 8, da: 4 }, NAMES = { ga: '(가)', na: '(나)', da: '(다)' };
 
 export default {
+  // what is taken for granted, written on screen by the frame
+  premise: (v) => (v.scene === 'tilt' ? '물체는 받침 위에서 미끄러지지 않는다고 봅니다' : '막대는 굵기와 재질이 고르다고 봅니다'),
   fixedViews: ['front', 'top'],
   camera: { target: [0, 1.7, 0], r: 13, theta: 0.3, phi: 1.2, rMax: 30 },
   charts: {

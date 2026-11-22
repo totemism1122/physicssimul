@@ -28,6 +28,8 @@ const withCart = (v) => inPush(v) && v.partner === 'cart', byFan = (v) => inThru
 const BURN = 0.5;   // the rocket throws out this much fuel each second (kg/s)
 
 export default {
+  // what is taken for granted, written on screen by the frame
+  premise: (v) => (v.scene === 'thrust' ? '트랙의 마찰과 수레가 받는 공기 저항은 없다고 봅니다' : '마찰과 공기 저항은 없다고 봅니다'),
   fixedViews: ['front', 'top'],
   camera: { target: [0, 0.9, 0], r: 15, theta: 0.25, phi: 1.1, rMax: 34 },
   stepTime: 0.005,                // "one step at a time" moves on by this many seconds
