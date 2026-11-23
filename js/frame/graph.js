@@ -192,9 +192,10 @@ export function createBars(canvas, charts) {
     let most = 0;
     for (const chart of list) for (const numbers of chart.values) if (numbers) for (const value of numbers) most = Math.max(most, Math.abs(value));
     const range = roomFor(most, list[0].range), each = h / list.length, left = size * 0.9, right = w - 4;
-    let nameX = 0;   // the names of the bars, each in its own colour
+    let nameX = 0;   // the names of the bars, each in its own colour; set closer together when there are too many for the line
     g.textAlign = 'left';
-    list[0].names.forEach((name, i) => { g.fillStyle = list[0].colors[i]; g.fillText(name, nameX, size * 0.75); nameX += g.measureText(name).width + size * 0.8; });
+    const written = list[0].names.reduce((sum, name) => sum + g.measureText(name).width, 0), between = Math.min(size * 0.8, Math.max(size * 0.25, (w - written) / Math.max(1, list[0].names.length - 1)));
+    list[0].names.forEach((name, i) => { g.fillStyle = list[0].colors[i]; g.fillText(name, nameX, size * 0.75); nameX += g.measureText(name).width + between; });
     list.forEach((chart, n) => {
       const top = each * n + size * 2.6, bottom = each * (n + 1) - size * 1.9;
       const zero = chart.signed ? (top + bottom) / 2 : bottom, reach = (chart.signed ? (bottom - top) / 2 : bottom - top) - size * 1.2;

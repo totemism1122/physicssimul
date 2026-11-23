@@ -11,7 +11,7 @@ export const SUBJECTS = [
         { name: '에너지와 열', sims: [s('P-05', '역학적 에너지 보존', true), s('P-06', '에너지 보존', true), s('P-07', '열에너지의 전환', true)] },
       ] },
       { roman: 'II', name: '전기와 자기', chapters: [
-        { name: '전기', sims: [s('P-08', '전기장과 전위차', true), s('P-09', '소비 전력'), s('P-10', '축전기의 활용')] },
+        { name: '전기', sims: [s('P-08', '전기장과 전위차', true), s('P-09', '소비 전력', true), s('P-10', '축전기의 활용')] },
         { name: '자기', sims: [s('P-11', '자성체'), s('P-12', '전류의 자기 작용'), s('P-13', '전자기 유도', true)] },
       ] },
       { roman: 'III', name: '빛과 물질', chapters: [
