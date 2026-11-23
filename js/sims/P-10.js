@@ -904,7 +904,9 @@ export default {
       if (byScene || !at.ids.includes(id)) return;   // set from the scene: what follows is done there
       at.changed(id, value);
     });
-    ctx.on('mode', () => { scene().mode(); moved = true; });
+    // (the frame tells of the class and inquiry buttons as well: only a change between basic and advanced counts here)
+    let wasAdvanced = ctx.advanced;
+    ctx.on('mode', () => { moved = true; if (ctx.advanced === wasAdvanced) return; wasAdvanced = ctx.advanced; scene().mode(); });
 
     gapScene.leave(); useScene.leave(); chart();
     return {

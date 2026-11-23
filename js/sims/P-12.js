@@ -335,11 +335,12 @@ export default {
     // pressed; in the advanced mode the gold corner of the board is carried round to turn the apparatus, and the lying
     // wire is lifted or lowered by either of its ends.
     const ray = new T.Raycaster(), level = new T.Plane(new T.Vector3(0, 1, 0), 0), hit = new T.Vector3();
-    function pointer(r, y) {   // where the pointer meets the height y, as the rig has it
+    function pointer(r, y) {   // where the pointer meets the height y, as the rig has it; and how far to the right that is as the room has it
       level.constant = -y;
       if (!r.intersectPlane(level, hit)) return null;
+      const across = hit.x;
       hit.applyAxisAngle(UP, -turnBy());
-      return [hit.x, hit.z];
+      return [hit.x, hit.z, across];
     }
     const tool = {
       handles: () => [...(ctx.advanced ? [cornerHandle] : []), ...(wire() === 'flat' ? wireHandles : []), knobHandle, rockerHandle, ...compasses.map((one) => one.handle)],
@@ -376,8 +377,8 @@ export default {
         const p = pointer(r, grab.kind === 'compass' ? BY : 0.8);
         if (!p) return;
         if (Math.hypot(p[0] - grab.from[0], p[1] - grab.from[1]) > 0.08) grab.moved = true;
-        if (grab.kind === 'knob') {   // 3 cm sideways for each 0.5 A
-          const toward = Math.max(0, Math.min(5, grab.amps + Math.round((p[0] - grab.from[0]) / 0.3) * 0.5));
+        if (grab.kind === 'knob') {   // 3 cm sideways for each 0.5 A: sideways as the room has it, however the apparatus is turned
+          const toward = Math.max(0, Math.min(5, grab.amps + Math.round((p[2] - grab.from[2]) / 0.3) * 0.5));
           if (toward !== ctx.values.amps) ctx.set('amps', toward);
           say(`${tenth(ctx.values.amps)} A`, KNOB[0], 1.5, KNOB[1]);
         } else if (grab.kind === 'compass') {

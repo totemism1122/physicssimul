@@ -928,7 +928,11 @@ export default {
       if (auto) { auto = false; stopSoon = true; }        // set anew by hand: the demonstration is over
       now().changed(id, value);
     });
+    let wasAdvanced = ctx.advanced;
     ctx.on('mode', () => {   // a negative test charge belongs to the advanced mode
+      moved = true;
+      if (ctx.advanced === wasAdvanced) return;   // (the frame tells of the class and inquiry buttons as well: nothing changes with those)
+      wasAdvanced = ctx.advanced;
       if (auto) { auto = false; stopSoon = true; }
       if (!ctx.advanced && ctx.values.probeSign !== 'plus') ctx.set('probeSign', 'plus');
       if (now().mode) now().mode();
