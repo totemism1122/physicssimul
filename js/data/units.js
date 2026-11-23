@@ -12,7 +12,7 @@ export const SUBJECTS = [
       ] },
       { roman: 'II', name: '전기와 자기', chapters: [
         { name: '전기', sims: [s('P-08', '전기장과 전위차', true), s('P-09', '소비 전력', true), s('P-10', '축전기의 활용', true)] },
-        { name: '자기', sims: [s('P-11', '자성체', true), s('P-12', '전류의 자기 작용'), s('P-13', '전자기 유도', true)] },
+        { name: '자기', sims: [s('P-11', '자성체', true), s('P-12', '전류의 자기 작용', true), s('P-13', '전자기 유도', true)] },
       ] },
       { roman: 'III', name: '빛과 물질', chapters: [
         { name: '빛의 성질과 이중성', sims: [s('P-14', '빛의 중첩과 간섭'), s('P-15', '빛의 굴절과 렌즈'), s('P-16', '빛과 물질의 이중성')] },
