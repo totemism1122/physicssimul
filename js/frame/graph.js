@@ -78,10 +78,11 @@ function keepDrawn(canvas, key, paint) {
 // area: a unit (for a force against time, 'N·s'). The plot is then shaded between each line and the time axis and the
 // area is written under it, with its sign: that of the whole record on show, or (without span) up to the marked moment.
 // dots: true. The samples of the plot are drawn as separate points, not joined: for values tried one by one.
+// floor: true. For a quantity that is never below nought: the axis lies along the bottom and the plot takes the whole height.
 export function createGraph(canvas, item, traces) {
   const none = createTrace();   // a plot without a record shows its axes only
   const plots = (item.plots || [{ y: item.y }]).map((plot) => ({
-    y: plot.y, area: plot.area, dots: plot.dots, lines: (plot.lines || [{ trace: plot.trace, color: LINE }]).map((line) => ({ ...line, trace: traces[line.trace] || none })),
+    y: plot.y, area: plot.area, dots: plot.dots, floor: plot.floor, lines: (plot.lines || [{ trace: plot.trace, color: LINE }]).map((line) => ({ ...line, trace: traces[line.trace] || none })),
   }));
   const first = plots[0].lines[0].trace;
   let mark = null;       // the moment marked by pressing the graph (a time of the record), or null
@@ -95,8 +96,8 @@ export function createGraph(canvas, item, traces) {
   function paint(g, w, h, size) {
     const left = size * 0.9, right = w - 4, each = (h - size * 1.5) / plots.length, notes = [];
     scale = null;
-    plots.forEach(({ y, lines, area, dots }, i) => {
-      const top = i * each + size * 1.7, bottom = (i + 1) * each - size * 0.2, mid = (top + bottom) / 2, half = (bottom - top) / 2;
+    plots.forEach(({ y, lines, area, dots, floor }, i) => {
+      const top = i * each + size * 1.7, bottom = (i + 1) * each - size * 0.2, mid = floor ? bottom : (top + bottom) / 2, half = floor ? bottom - top : (bottom - top) / 2;
       g.strokeStyle = AXIS; g.lineWidth = 1.2; g.setLineDash([]);
       g.beginPath(); g.moveTo(left, top); g.lineTo(left, bottom); g.moveTo(left, mid); g.lineTo(right, mid); g.stroke();
       g.fillStyle = INK; g.textAlign = 'left'; g.fillText(y, 0, i * each + size * 0.75);

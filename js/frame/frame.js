@@ -269,6 +269,8 @@ export async function simScreen(found, query, setAddress) {
     if (b.dataset.kind) ctx.view.kind = b.dataset.kind; else ctx.view.dir = b.dataset.dir;
     applyView();
   });
+  // A simulation may turn the fixed viewpoint to another of its directions, where an arrangement is best seen from there.
+  ctx.setView = (dir) => { if (spec.fixedViews.includes(dir) && ctx.view.dir !== dir) { ctx.view.dir = dir; applyView(); } };
 
   // ---------- the scene ----------
   // The shared laboratory (three.js, fetched only now) with the simulation's apparatus on the bench.
