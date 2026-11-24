@@ -681,9 +681,9 @@ export default {
     const lampHandle = add(rig3, box(1.0, 1.6, 1.4), M.dark, 0, LAMP.y, LAMP.z, false, false); lampHandle.visible = false; lampHandle.userData.grip = { kind: 'laser' };
     const lampSpot = new T.Vector3(0, LAMP.y + 0.95, LAMP.z), lampLabel = view.label(lampSpot);
     // the light as lines: falling on the film, down and up in it, on into the glass, and the two that come back
-    const dimInk = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false }), tintInk = new T.MeshBasicMaterial({ color: 0xffffff });
+    const dimInk = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false });
     const rod = (radius, ink) => add(rig3, cyl(radius, radius, 1, 8), ink, 0, 0, 0, false, false);
-    const rods = { fall: rod(0.024, beamInk), down: rod(0.02, lit), up: rod(0.02, lit), on: rod(0.022, beamInk), one: rod(0.012, dimInk), two: rod(0.012, dimInk), white: rod(0.05, tintInk) };
+    const rods = { fall: rod(0.024, beamInk), down: rod(0.02, lit), up: rod(0.02, lit), on: rod(0.022, beamInk), one: rod(0.012, dimInk), two: rod(0.012, dimInk) };
     function lay(mesh, y0, z0, y1, z1) {   // a line from one point of the plane to another
       const long = Math.hypot(y1 - y0, z1 - z0);
       mesh.position.set(0, (y0 + y1) / 2, (z0 + z1) / 2); mesh.quaternion.setFromUnitVectors(UP, way.set(0, (y1 - y0) / long, (z1 - z0) / long)); mesh.scale.y = long;
@@ -773,12 +773,18 @@ export default {
       const long = RUN + SUM, gap = zc - za, model = v.echo && !white();
       const wave = light().nm * SCALE, turn = 2 * Math.PI * run3.t * 530 / light().nm, late = 4 * Math.PI * n * v.thick / light().nm;
       const r1 = (n - 1) / (n + 1), r2 = (NS - n) / (NS + n), high = v.thick > 0 ? [HIGH * r1, HIGH * r2 * (1 - r1 * r1)] : [HIGH * (NS - 1) / (NS + 1), 0];
-      rods.one.visible = rods.two.visible = !white(); rods.white.visible = white();
-      if (white()) {   // white light: what comes back, in its colour (as bright as can be drawn, so that the colour shows)
-        const tint = [0, 1, 2].map((c) => WHITE.reduce((sum, nm) => sum + hue(nm)[c] * back(nm), 0)), most = Math.max(...tint);
-        tintInk.color.setRGB(tint[0] / most, tint[1] / most, tint[2] / most, T.SRGBColorSpace);
-        lay(rods.white, top, (za + zc) / 2, top + long * COS, (za + zc) / 2 + long * SIN);
-      } else { lay(rods.one, top, za, top + long * COS, za + long * SIN); lay(rods.two, top, zc, top + (long - gap * SIN) * COS, zc + (long - gap * SIN) * SIN); }
+      // The two that come back are thin lines whatever the light (they are a few hundredths of what falls on the film).
+      // White light: the lines, and a dot by the number, have the colour of what comes back: each wavelength as much as
+      // comes back of it, the whole as bright as can be drawn so that the colour shows (white where all come back alike).
+      let dot = '';
+      if (white()) {
+        const tint = [0, 1, 2].map((c) => WHITE.reduce((sum, nm) => sum + hue(nm)[c] * back(nm), 0) / WHITE.reduce((sum, nm) => sum + hue(nm)[c], 0)), most = Math.max(...tint);
+        dimInk.color.setRGB(tint[0] / most, tint[1] / most, tint[2] / most, T.SRGBColorSpace);
+        dot = ` <span style="display:inline-block;width:0.75em;height:0.75em;border-radius:50%;vertical-align:-0.05em;margin-left:0.25em;background:rgb(${tint.map((one) => Math.round(255 * one / most)).join()})"></span>`;
+      }
+      lay(rods.one, top, za, top + long * COS, za + long * SIN);
+      if (v.thick > 0) lay(rods.two, top, zc, top + (long - gap * SIN) * COS, zc + (long - gap * SIN) * SIN);
+      rods.two.visible = v.thick > 0;
       echoes.forEach((one, k) => {
         one.mesh.visible = model && !(k === 1 && v.thick === 0);
         if (!one.mesh.visible) return;
@@ -794,7 +800,7 @@ export default {
       });
       // the writing
       lampLabel.write(white() ? '<b>백색광</b>' : `${light().name} <b>${light().nm} nm</b>`); lampLabel.show(true);
-      backSpot.set(0, top + long * COS + 0.45, (za + zc) / 2 + long * SIN); backLabel.write(`반사 <b>${(100 * backNow(v.thick)).toFixed(2)} %</b>`); backLabel.show(true);
+      backSpot.set(0, top + long * COS + 0.45, (za + zc) / 2 + long * SIN); backLabel.write(`반사 <b>${(100 * backNow(v.thick)).toFixed(2)} %</b>${dot}`); backLabel.show(true);
       thickSpot.set(0, top + 0.1, tall() ? 2.3 : 3.55); thickLabel.write(v.thick ? `막의 두께 <b>${v.thick} nm</b>` : '막 없음'); thickLabel.show(true);
       glassLabel.write('유리'); glassLabel.show(true);
       listLabel3.show(v.numbers);
