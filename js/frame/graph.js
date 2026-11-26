@@ -79,10 +79,14 @@ function keepDrawn(canvas, key, paint) {
 // area is written under it, with its sign: that of the whole record on show, or (without span) up to the marked moment.
 // dots: true. The samples of the plot are drawn as separate points, not joined: for values tried one by one.
 // floor: true. For a quantity that is never below nought: the axis lies along the bottom and the plot takes the whole height.
+// marks: [[value, name], …]. Numbers on an axis, each with a faint line across the plot: on a plot for its value axis,
+// on the item for the horizontal axis (written under the last plot; one that would run into the axis's name is left out).
+// A line may have dots: true of its own. A sample may be NaN: a place of the record that is empty (a line breaks there).
+// What read() gives as '' is left out of the writing at a marked point.
 export function createGraph(canvas, item, traces) {
   const none = createTrace();   // a plot without a record shows its axes only
   const plots = (item.plots || [{ y: item.y }]).map((plot) => ({
-    y: plot.y, area: plot.area, dots: plot.dots, floor: plot.floor, lines: (plot.lines || [{ trace: plot.trace, color: LINE }]).map((line) => ({ ...line, trace: traces[line.trace] || none })),
+    y: plot.y, area: plot.area, dots: plot.dots, floor: plot.floor, marks: plot.marks, lines: (plot.lines || [{ trace: plot.trace, color: LINE }]).map((line) => ({ ...line, trace: traces[line.trace] || none })),
   }));
   const first = plots[0].lines[0].trace;
   let mark = null;       // the moment marked by pressing the graph (a time of the record), or null
@@ -96,7 +100,7 @@ export function createGraph(canvas, item, traces) {
   function paint(g, w, h, size) {
     const left = size * 0.9, right = w - 4, each = (h - size * 1.5) / plots.length, notes = [];
     scale = null;
-    plots.forEach(({ y, lines, area, dots, floor }, i) => {
+    plots.forEach(({ y, lines, area, dots, floor, marks }, i) => {
       const top = i * each + size * 1.7, bottom = (i + 1) * each - size * 0.2, mid = floor ? bottom : (top + bottom) / 2, half = floor ? bottom - top : (bottom - top) / 2;
       g.strokeStyle = AXIS; g.lineWidth = 1.2; g.setLineDash([]);
       g.beginPath(); g.moveTo(left, top); g.lineTo(left, bottom); g.moveTo(left, mid); g.lineTo(right, mid); g.stroke();
@@ -109,10 +113,24 @@ export function createGraph(canvas, item, traces) {
       const span = fixed ? fixed[1] - fixed[0] : [lead.window / 16, lead.window / 4].find((one) => one >= length) || lead.window;
       const start = fixed ? fixed[0] : Math.max(lead.t[0], lead.t[n - 1] - span), end = fixed ? fixed[1] : lead.t[n - 1];
       let most = 0;
-      for (const { trace } of lines) for (let k = 0; k < trace.t.length; k++) if (trace.t[k] >= start) most = Math.max(most, Math.abs(trace.v[k]));
+      for (const { trace } of lines) for (let k = 0; k < trace.t.length; k++) if (trace.t[k] >= start && Number.isFinite(trace.v[k])) most = Math.max(most, Math.abs(trace.v[k]));
       const range = roomFor(most, lead.range);
       const px = (t) => left + (t - start) / span * (right - left), py = (v) => mid - v / range * half;
       if (i === 0) scale = { left, right, start, span, end };
+      if (marks || item.marks) {
+        const across = item.marks || [], under = i === plots.length - 1 ? w - g.measureText(item.x).width - size * 0.8 : 0;
+        g.strokeStyle = 'rgba(243, 238, 223, 0.16)'; g.lineWidth = 1; g.setLineDash([2, 3]);
+        g.beginPath();
+        for (const [value] of marks || []) { g.moveTo(left, py(value)); g.lineTo(right, py(value)); }
+        for (const [value] of across) { g.moveTo(px(value), top); g.lineTo(px(value), bottom); }
+        g.stroke();
+        const font = g.font;
+        g.font = font.replace(/[\d.]+px/, `${size * 0.88}px`); g.fillStyle = 'rgba(243, 238, 223, 0.5)'; g.textAlign = 'left';
+        for (const [value, name] of marks || []) g.fillText(name, left + size * 0.35, py(value) - size * 0.55);
+        g.textAlign = 'center';
+        for (const [value, name] of across) if (px(value) + g.measureText(name).width / 2 < under) g.fillText(name, px(value), h - size * 0.75);
+        g.font = font;
+      }
       g.save(); g.beginPath(); g.rect(left, top - size * 0.4, right - left, bottom - top + size * 0.8); g.clip();
       g.strokeStyle = 'rgba(243, 238, 223, 0.3)'; g.lineWidth = 1; g.setLineDash([2, 4]);
       g.beginPath();
@@ -127,10 +145,10 @@ export function createGraph(canvas, item, traces) {
         g.lineTo(px(trace.t[last]), mid); g.closePath(); g.globalAlpha = 0.22; g.fillStyle = color; g.fill(); g.globalAlpha = 1;
       }
       g.lineWidth = 2; g.lineJoin = 'round'; g.setLineDash([]);
-      for (const { trace, color } of lines) {
-        if (dots) { g.fillStyle = color; for (let k = 0; k < trace.t.length; k++) { g.beginPath(); g.arc(px(trace.t[k]), py(trace.v[k]), 2.6, 0, Math.PI * 2); g.fill(); } continue; }
+      for (const { trace, color, dots: own } of lines) {
+        if (dots || own) { g.fillStyle = color; for (let k = 0; k < trace.t.length; k++) { g.beginPath(); g.arc(px(trace.t[k]), py(trace.v[k]), 2.6, 0, Math.PI * 2); g.fill(); } continue; }
         g.strokeStyle = color; g.beginPath();
-        for (let k = 0; k < trace.t.length; k++) { if (k) g.lineTo(px(trace.t[k]), py(trace.v[k])); else g.moveTo(px(trace.t[k]), py(trace.v[k])); }
+        for (let k = 0; k < trace.t.length; k++) { if (k && Number.isFinite(trace.v[k - 1])) g.lineTo(px(trace.t[k]), py(trace.v[k])); else g.moveTo(px(trace.t[k]), py(trace.v[k])); }
         g.stroke();
       }
       g.restore();
@@ -155,8 +173,8 @@ export function createGraph(canvas, item, traces) {
       g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke();
       g.fillStyle = '#f3eedf';
       for (const { trace } of lines) { g.beginPath(); g.arc(x, py(at(trace)), 3.5, 0, Math.PI * 2); g.fill(); }
-      const text = lines.map(({ trace, name }) => `${name ? `${name} ` : ''}${trace.read(at(trace))}`).join('   ');
-      notes.push(() => note(g, text, x, lines.length > 1 ? top + size * 1.6 : py(at(lead)), size, w));
+      const text = lines.map(({ trace, name }) => { const value = trace.read(at(trace)); return value && `${name ? `${name} ` : ''}${value}`; }).filter(Boolean).join('   ');
+      if (text) notes.push(() => note(g, text, x, lines.length > 1 ? top + size * 1.6 : py(at(lead)), size, w));
       if (i === plots.length - 1) notes.push(() => note(g, `${(fixed ? lead.t[k] : lead.t[k] - lead.t[from]).toFixed(2)} ${item.xUnit || 's'}`, x, bottom + size * 1.9, size, w - g.measureText(item.x).width - size * 0.8));
     });
     for (const write of notes) write();            // the writing goes on top of every plot
