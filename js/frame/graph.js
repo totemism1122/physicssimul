@@ -203,6 +203,13 @@ export function createGraph(canvas, item, traces) {
   return kept;
 }
 
+// A picture the simulation draws itself (a diagram that is not a record against time). picture(): what the
+// simulation has put in ctx.pictures under the item's name, { key(), paint(g, w, h, size) }, or nothing yet.
+// It is drawn again whenever key() gives a new answer.
+export function createPicture(canvas, picture) {
+  return keepDrawn(canvas, () => { const one = picture(); return one ? one.key() : ''; }, (g, w, h, size) => { const one = picture(); if (one) one.paint(g, w, h, size); });
+}
+
 // A bar chart: the groups stand side by side, each with one bar for every name. The value is written at the end of each bar.
 // charts: one chart, or several drawn one above the other to the same scale.
 export function createBars(canvas, charts) {

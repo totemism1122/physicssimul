@@ -1,6 +1,6 @@
 // A control panel for one item of a detailed menu: a slider, a choice, a graph, a record table or a short note.
 // Every panel can be pinned (kept on screen); sliders and choices can also be locked (value held).
-import { createGraph, createBars } from './graph.js';
+import { createGraph, createBars, createPicture } from './graph.js';
 
 const text = (item, value) => (item.digits ? value.toFixed(item.digits) : String(value)) + (item.unit || '');
 // The name of an item: a text, or label(values, advanced) for one that depends on the arrangement
@@ -10,7 +10,7 @@ export const labelOf = (item, ctx) => (typeof item.label === 'function' ? item.l
 // ctx: the frame's shared state (values, locked, advanced, set, traces, tables).  on: { pin(), close() }.
 export function buildPanel(item, ctx, on) {
   const el = document.createElement('section');
-  el.className = `panel panel-${item.kind}${(item.plots && item.plots.length > 1) || Array.isArray(item.bars) ? ' stacked' : ''}${item.wide ? ' wide' : ''}`;
+  el.className = `panel panel-${item.kind}${(item.plots && item.plots.length > 1) || Array.isArray(item.bars) || item.tall ? ' stacked' : ''}${item.wide ? ' wide' : ''}`;
   const canLock = item.kind === 'slider' || item.kind === 'choice';
   el.innerHTML = `
     <header><h3>${labelOf(item, ctx)}</h3>${item.kind === 'slider' ? '<output></output>' : ''}</header>
@@ -26,11 +26,14 @@ export function buildPanel(item, ctx, on) {
 
   if (item.kind === 'slider') {
     const out = el.querySelector('output');
-    body.innerHTML = `<input type="range" min="${item.min}" max="${item.max}" step="${item.step}" aria-label="${labelOf(item, ctx)}">`;
+    const now = (one) => (typeof one === 'function' ? one(ctx.values, ctx.advanced) : one);   // max and step may be (values, advanced) => number
+    body.innerHTML = `<input type="range" min="${item.min}" max="${now(item.max)}" step="${now(item.step)}" aria-label="${labelOf(item, ctx)}">`;
     const input = body.firstChild;
     refresh = () => {
+      const max = now(item.max);
+      input.max = max; input.step = now(item.step);
       input.value = ctx.values[item.id]; input.disabled = ctx.locked.has(item.id);
-      input.style.setProperty('--p', (ctx.values[item.id] - item.min) / (item.max - item.min));
+      input.style.setProperty('--p', (ctx.values[item.id] - item.min) / (max - item.min));
       out.textContent = text(item, ctx.values[item.id]);
     };
     input.addEventListener('input', () => { ctx.set(item.id, Number(input.value)); refresh(); });
@@ -47,7 +50,8 @@ export function buildPanel(item, ctx, on) {
     });
   } else if (item.kind === 'graph') {
     body.innerHTML = '<canvas></canvas>';
-    stop = (item.bars ? createBars(body.firstChild, [].concat(item.bars).map((id) => ctx.charts[id])) : createGraph(body.firstChild, item, ctx.traces)).stop;
+    // (a graph item may name a picture that the simulation draws itself: picture: an id in ctx.pictures; tall: true gives it the height of two plots)
+    stop = (item.bars ? createBars(body.firstChild, [].concat(item.bars).map((id) => ctx.charts[id])) : item.picture ? createPicture(body.firstChild, () => ctx.pictures[item.picture]) : createGraph(body.firstChild, item, ctx.traces)).stop;
   } else if (item.kind === 'table') {
     // rows are added by the simulation (ctx.tables[id].rows); a cell that differs from the row above is marked
     const table = ctx.tables[item.id];

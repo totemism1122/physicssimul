@@ -64,6 +64,7 @@ export async function simScreen(found, query, setAddress) {
     view: { kind: 'free', dir: spec.fixedViews.includes('front') ? 'front' : spec.fixedViews[0] },
     traces: {},   // id -> the record of one quantity against time (js/frame/graph.js); the simulation adds the samples
     charts: {},   // id -> the numbers behind a bar chart; the simulation sets them
+    pictures: {}, // id -> { key(), paint(g, w, h, size) }: a picture the simulation draws itself in a graph panel
     tables: {},   // id -> { rows, add(row), clear() } behind a record table; the simulation adds the rows
     on(type, fn) { (listeners[type] = listeners[type] || []).push(fn); },
     emit(type, ...args) { (listeners[type] || []).forEach((fn) => fn(...args)); },
