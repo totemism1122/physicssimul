@@ -88,7 +88,7 @@ function flow(id, volt, lit = 0, n = 10) {
   for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; if (0.1 * Math.exp((volt - mid * ohms - on) / 0.05) - lit > mid) lo = mid; else hi = mid; }
   return (lo + hi) / 2;
 }
-const plain = (value) => { if (!(value > 0)) return '0'; const n = Math.floor(Math.log10(value)); return `${(value / 10 ** n).toFixed(1)}×10${[...String(n)].map((c) => '¯⁰¹²³⁴⁵⁶⁷⁸⁹'['-0123456789'.indexOf(c)]).join('')}`; };   // the same (¯ for the raised minus, which the Korean face draws a whole square wide) without marks, for the graph
+const plain = (value) => { if (!(value > 0)) return '0'; const n = Math.floor(Math.log10(value)); return `${(value / 10 ** n).toFixed(1)}×10${[...String(n)].map((c) => '¯⁰¹²³⁴⁵⁶⁷⁸⁹'['-0123456789'.indexOf(c)]).join('')}`; };   // a number as power() below writes it, but without marks (¯ for the raised minus, which the Korean face draws a whole square wide): for the graph
 const TEMPS = Array.from({ length: 41 }, (_, k) => 200 + 20 * k), INKS = { copper: '#e39a6c', silicon: '#7fb2e6', diamond: '#8fd19e' };   // (advanced) the temperatures of the graph (K) and the colours of its lines
 const READ = { stuff: '' };   // (the material on the plate: the one whose value is written where the graph is pressed)
 const COLD = 200, HOT = 1000, ROOM = 300;   // (advanced) the temperatures the plate can be brought to (K), and that of the room
@@ -96,12 +96,12 @@ const power = (value) => { const n = Math.floor(Math.log10(value)); return `${(v
 
 export default {
   // what is taken for granted, written on screen by the frame
-  premise: (v, advanced) => (onLed(v) ? (v.led === 'pd' ? '전자와 양공은 실제보다 훨씬 크고 느리며 수도 적게 그렸습니다. 광 다이오드에는 빛의 세기 100 %에서 4 mA가 흐른다고 두었습니다' : '전자와 양공은 실제보다 훨씬 크고 느리며 수도 적게 그렸습니다. 적외선은 눈에 보이지 않지만 흐린 붉은빛으로 그렸습니다') + (advanced ? '. 다이오드 자체의 저항은 도핑 농도에 반비례하고, 접합면의 전위 장벽은 작동 전압보다 0.3 V 높다고 두었습니다' : '') : onDope(v) ? '공유 결합을 평면에 펴서 그렸습니다. 전자와 양공은 실제보다 훨씬 크고 느리게 그렸습니다(제멋대로인 움직임은 실제로는 한쪽으로 쏠리는 이동보다 훨씬 빠름). 불순물은 실제로는 규소 원자 수백만 개에 하나쯤입니다' + (advanced ? '. 열로 생긴 전자와 양공의 쌍은 수가 100배가 될 때마다 1쌍씩 그렸습니다' : '') : `가장 바깥의 두 준위만 그렸습니다. 준위의 위치는 원자가 한 줄로 이어졌을 때의 식으로 어림한 것이고, 띠 간격만 실제 값입니다${advanced ? '. 전도띠로 올라간 전자는 수가 10배가 될 때마다 점 2개씩 늘려 그렸습니다' : ''}`),
+  premise: (v, advanced) => (onLed(v) ? (v.led === 'pd' ? '전자와 양공은 실제보다 훨씬 크고 느리며 수도 적게 그렸습니다. 광 다이오드에는 빛의 세기 100 %에서 4 mA가 흐른다고 두었습니다' : '전자와 양공은 실제보다 훨씬 크고 느리며 수도 적게 그렸습니다. 적외선은 눈에 보이지 않지만 흐린 붉은빛으로 그렸습니다') + (advanced ? '. 다이오드 자체의 저항은 도핑 농도에 반비례하고, 접합면의 전위 장벽은 작동 전압보다 0.3 V 높다고 두었습니다' : '. 다이오드 자체에도 저항(30 Ω)이 있다고 두었습니다') : onDope(v) ? '공유 결합을 평면에 펴서 그렸습니다. 전자와 양공은 실제보다 훨씬 크고 느리게 그렸습니다(제멋대로인 움직임은 실제로는 한쪽으로 쏠리는 이동보다 훨씬 빠름). 불순물은 실제로는 규소 원자 수백만 개에 하나쯤입니다' + (advanced ? '. 열로 생긴 전자와 양공의 쌍은 수가 100배가 될 때마다 1쌍씩 그렸습니다' : '') : `가장 바깥의 두 준위만 그렸습니다. 준위의 위치는 원자가 한 줄로 이어졌을 때의 식으로 어림한 것이고, 띠 간격만 실제 값입니다${advanced ? '. 전도띠로 올라간 전자는 수가 10배가 될 때마다 점 2개씩 늘려 그렸습니다' : ''}`),
   fixedViews: ['front'],
   camera: { target: [0.2, 2.9, 0], r: 16.5, theta: 0, phi: 1.3, rMax: 40 },
   // (the diode) not against time: the least voltage of the supply at which each diode has been seen alight (V), against
   // the frequency of its light (10^14 Hz). Every line has a place for each diode, in the order of FREQS, empty (NaN)
-  // but for its own; v0 is empty throughout (the first line, by which the graph finds the place that is pressed)
+  // but for its own; v0 is empty throughout (the first line: it gives the graph its axes and is never what is read)
   // (the bands, advanced) how much the full plate resists at each temperature it has been at, a line for each material
   // and (rnow) a point for where it is now. Kept by tenfolds, as the textbook draws it: log10(ρ in Ω m) + 10, so that
   // the axis runs from 10^-10 to 10^16. Every line has a place for each of TEMPS, empty (NaN) where the plate has not been
@@ -112,7 +112,7 @@ export default {
   menus: {
     vars: [
       { id: 'scene', label: '장면 선택', kind: 'choice', value: 'band', options: [{ id: 'band', label: '에너지띠' }, { id: 'dope', label: '불순물 반도체' }, { id: 'led', label: '발광 다이오드' }] },
-      { id: 'led', label: '발광 다이오드의 색', kind: 'choice', value: 'red', when: onLed, options: [...Object.keys(LEDS).map((id) => ({ id, label: LEDS[id].name })), { id: 'pd', label: PHOTO.name, advanced: true }] },
+      { id: 'led', label: (v, advanced) => (advanced ? '다이오드' : '발광 다이오드의 색'), kind: 'choice', value: 'red', when: onLed, options: [...Object.keys(LEDS).map((id) => ({ id, label: LEDS[id].name })), { id: 'pd', label: PHOTO.name, advanced: true }] },   // (advanced: the photodiode is one of them)
       { id: 'light', label: '빛의 세기', kind: 'slider', min: 0, max: 100, step: 5, value: 50, unit: '%', advanced: true, when: (v) => onLed(v) && v.led === 'pd' },
       { id: 'volt', label: '전원 장치의 전압', kind: 'slider', min: 0, max: VOLT_MAX, step: 0.05, value: 0, unit: 'V', when: (v) => onLed(v) && v.led !== 'pd' },
       { id: 'turned', label: '반대로 연결', kind: 'toggle', when: (v) => onLed(v) && v.led !== 'pd' },
@@ -145,7 +145,7 @@ export default {
       { id: 'table2', label: '기록 표', kind: 'table', rows: 8, when: onDope, text: '불순물을 바꿀 때마다 한 줄씩 적힙니다.',
         columns: [{ label: '불순물' }, { label: '원자가<br>전자', unit: '개' }, { label: '생긴 것', result: true }, { label: '반도체의<br>종류', result: true }] },
       { id: 'table', label: '기록 표', kind: 'table', rows: 8, when: onBand, text: '판이 다 차서 측정기가 닿을 때마다 한 줄씩 적힙니다.',
-        columns: [{ label: '물질' }, { label: '띠 간격', unit: 'eV' }, { label: '불빛', result: true }, { label: '구분', result: true }] },
+        columns: [{ label: '물질' }, { label: '띠 간격', unit: 'eV' }, { label: '온도', unit: 'K', advanced: true }, { label: '불빛', result: true }, { label: '구분', result: true }] },
     ],
   },
 
@@ -237,40 +237,47 @@ export default {
     // (all of those on the way, when the temperature is changed). last: what was kept last; still: nothing is kept (while all is put back).
     const VOLT = 3, OHM = 10;
     const count = () => ctx.values.atoms, whole = () => count() === MOST, stuff = () => STUFF[ctx.values.stuff], temp = () => (ctx.advanced ? ctx.values.temp : ROOM);
-    const current = (T = temp()) => VOLT / (OHM + resist(ctx.values.stuff, T) * (PLATE.w / 100) / (PLATE.long / 100 * 0.001));   // (A)
+    const current = () => VOLT / (OHM + resist(ctx.values.stuff, temp()) * (PLATE.w / 100) / (PLATE.long / 100 * 0.001));   // (A)
     const pairs = () => (ctx.advanced && whole() && stuff().gap ? Math.max(0, Math.min(40, Math.round(2 * (Math.log10(lifted(ctx.values.stuff, temp())) - 10)))) : 0);
     const tried = {}, risen = new Map();   // (risen: when each pair on the board began to rise)
     let rising = false, last = null, still = false;
     const place = (value) => Math.log10(value) + 10;   // (where a resistivity stands on the graph)
     function mark() {
-      const id = ctx.values.stuff, T = temp(), on = ctx.advanced && whole() && !still;
+      const id = ctx.values.stuff, kelvin = temp(), on = ctx.advanced && whole() && !still;
       READ.stuff = id;
       if (on) {
         if (!tried[id]) tried[id] = new Map();
-        const from = last && last.id === id ? last.T : T;
-        for (const at of TEMPS) if (at >= Math.min(from, T) && at <= Math.max(from, T)) tried[id].set(at, resist(id, at));
+        const from = last && last.id === id ? last.kelvin : kelvin;
+        for (const at of TEMPS) if (at >= Math.min(from, kelvin) && at <= Math.max(from, kelvin)) tried[id].set(at, resist(id, at));
       }
-      last = on ? { id, T } : null;
+      last = on ? { id, kelvin } : null;
       for (const one of Object.keys(STUFF)) {
         const trace = ctx.traces[`r${one}`];
         trace.clear();
         for (const at of TEMPS) trace.add(at, tried[one] && tried[one].has(at) ? place(tried[one].get(at)) : NaN);
       }
       ctx.traces.rnow.clear();
-      for (const at of TEMPS) ctx.traces.rnow.add(at, on && at === T ? place(resist(id, T)) : NaN);
+      for (const at of TEMPS) ctx.traces.rnow.add(at, on && at === kelvin ? place(resist(id, kelvin)) : NaN);
     }
     function paintGauge() { stove1.show(temp()); }
-    const glow = (T = temp()) => (whole() ? Math.min(1, current(T) / (VOLT / OHM) / 0.6) ** 2 : 0);   // how bright the lamp is, of all it can be
+    const glow = () => (whole() ? Math.min(1, current() / (VOLT / OHM) / 0.6) ** 2 : 0);   // how bright the lamp is, of all it can be
     const state = { due: 0 };
     function gather(by) { const to = Math.max(1, Math.min(MOST, count() + by)); if (to !== count()) ctx.set('atoms', to); }
+    // (the number of atoms locked: the clock does not stack them. It says so and stops, rather than run with nothing going on)
+    function barred() {
+      if (!ctx.locked.has('atoms')) return false;
+      say('잠금', DISH.x, DISH.y + 0.7, DISH.z, 1.2); ctx.setPlaying(false);
+      return true;
+    }
     function note() {
-      if (!whole()) return;
+      if (!whole() || still) return;   // (nothing is written while all is put back: the material is changed there before the plate is emptied)
       const table = ctx.tables.table, above = table.rows[table.rows.length - 1], one = stuff();
-      const row = [one.name, one.gap ? one.gap.toFixed(2) : '없음', glow(ROOM) > 0.05 ? '켜짐' : '꺼짐', one.kind];   // (the table tells the materials apart: as they are in the room, whatever the plate's temperature)
+      const row = [one.name, one.gap ? one.gap.toFixed(2) : '없음', String(temp()), glow() > 0.05 ? '켜짐' : '꺼짐', one.kind];   // (the lamp as it is now, at the plate's temperature: that is a column of the advanced mode, and the room's in the basic one)
       if (!(above && above.every((cell, i) => cell === row[i]))) table.add(row);
     }
     function advance(t, dt) {   // (while the clock runs the atoms land one after another, until the plate is full)
       if (whole()) { ctx.setPlaying(false); return; }
+      if (barred()) return;
       state.due += PACE[ctx.values.pace] * dt;
       const some = Math.floor(state.due);
       if (some) { state.due -= some; gather(some); }
@@ -278,7 +285,7 @@ export default {
     function toStart() {
       shuffle(); still = true;
       for (const [key, value] of [['stuff', 'copper'], ['atoms', 1], ['pace', 'mid'], ['temp', ROOM]]) if (!ctx.locked.has(key) && ctx.values[key] !== value) ctx.set(key, value);
-      still = false; state.due = 0; paint(); mark(); moved = true;
+      still = false; state.due = 0; note(); paint(); mark(); moved = true;   // (a plate still full, its number of atoms locked, is written as it now is)
     }
 
     // the board: a line for each level (two electrons on each that is filled, while they are few enough to be seen); the names of the bands once the plate is full
@@ -375,20 +382,20 @@ export default {
       if (v.numbers) {
         const lines = [`<b>${one.name}</b> (${one.kind}) 원자 ${n}개`, n === 1 ? '준위 하나에 전자 2개까지' : `준위 하나가 <b>${n}개</b>로 갈라짐`, `전자 ${2 * n}개가 아래 준위부터 채움`];
         if (all && ctx.advanced) lines.push(`온도(T) <b>${temp()} K</b>`, !one.gap ? '온도가 오르면 원자의 진동이 커져 전자의 이동을 방해함' : `전도띠로 올라간 전자 <b>${lifted(v.stuff, temp()) >= 1e6 ? `1 cm³에 ${power(lifted(v.stuff, temp()) / 1e6)}개` : '거의 없음'}</b>`);
-        if (all) lines.push(one.gap ? `띠 간격 <b>${one.gap.toFixed(2)} eV</b>` : '띠 간격 없음 (두 띠가 겹침)', `비저항 <b>${power(resist(v.stuff, temp()))} Ω·m</b>`, `측정기의 전류 <b>${current() >= 0.001 ? `${current().toFixed(2)} A` : `${power(current())} A`}</b>`);
+        if (all) lines.push(one.gap ? `띠 간격 <b>${one.gap.toFixed(2)} eV</b>` : '띠 간격 없음 (두 띠가 겹침)', `비저항 <b>${power(resist(v.stuff, temp()))} Ω·m</b>`, `측정기의 전류 <b>${current() >= 0.005 ? `${current().toFixed(2)} A` : `${power(current())} A`}</b>`);   // (below 0.005 A two decimals would write 0.00)
         labels.list.write(lines.join('<br>'));
         if (tall()) spots.list.set(FACE.x, FACE.hi + 0.25, FACE.z); else spots.list.set(FACE.x + (ctx.advanced ? 5.4 : 4.7), 3.6, FACE.z);
       }
     }
 
     const bandScene = {
-      rig, ids: ['stuff', 'atoms', 'temp'], keep: [], kept: {},
+      rig, ids: ['stuff', 'atoms', 'temp'],
       look: [{ target: [0.2, 2.9, 0], r: 16.5, theta: 0, phi: 1.3 }, { target: [0, 3.4, 0], r: 28, theta: 0, phi: 1.3 }],
       handles: bandTool.handles, start: bandTool.start, move: bandTool.move, end: bandTool.end,
       enter() { rig.visible = true; paint(); paintGauge(); mark(); },
       leave() { rig.visible = false; for (const label of Object.values(labels)) label.show(false); },
       changed(id) { if (id === 'temp') paintGauge(); else note(); paint(); mark(); },
-      play(on) { if (on) { state.due = 0; if (whole()) { shuffle(); ctx.set('atoms', 1); } } },   // (played again when the plate is full: from one atom anew)
+      play(on) { if (on && !barred()) { state.due = 0; if (whole()) { shuffle(); ctx.set('atoms', 1); } } },   // (played again when the plate is full: from one atom anew)
       tick: advance, toStart, draw, numbers: paint, mode() { paint(); paintGauge(); mark(); },
     };
 
@@ -582,7 +589,7 @@ export default {
     const dopeTool = {
       handles: () => [things.p.grip, things.b.grip, keyHandle, ...(ctx.advanced ? [stove2.handle, ...siteGrips.filter((grip, k) => ctx.values.dopant !== 'none' && state2.filled[k])] : [])],
       start(grip, r) {
-        if (grip.kind === 'key') { if (ctx.locked.has('closed')) { say('잠금', KEY.x, 1.2, KEY.z, 1.2); return false; } grab = { ...grip }; return true; }
+        if (grip.kind === 'key') { grab = { ...grip }; return true; }
         if (grip.kind === 'site') { if (ctx.locked.has('many') || ctx.locked.has('dopant')) { say('잠금', lattice.position.x + seat(grip.k).x, seat(grip.k).y + 0.6, LAT.z, 1.2); return false; } grab = { ...grip }; return true; }
         if (grip.kind === 'warm') {
           const at = stove2.group.position;
@@ -674,7 +681,7 @@ export default {
       }
     }
     const dopeScene = {
-      rig: rig2, ids: ['dopant', 'closed', 'many', 'warm'], keep: [], kept: {},
+      rig: rig2, ids: ['dopant', 'closed', 'many', 'warm'],
       look: [{ target: [0.5, 2.4, 0], r: 14.5, theta: 0, phi: 1.3 }, { target: [0, 3.5, 0], r: 19, theta: 0, phi: 1.3 }],
       handles: dopeTool.handles, start: dopeTool.start, move: dopeTool.move, end: dopeTool.end,
       enter() { rig2.visible = true; lined(); settle(); stove2.show(warm()); },
@@ -801,7 +808,7 @@ export default {
     // the voltage on the junction itself (forwards above nought): the supply's less what the resistor and the diode's own
     // resistance take (the photodiode: what its current puts on them); and how wide the strip is, of its width with no voltage
     const across = () => (forward() ? volts() - amps() * (LOAD + inner(many3())) : -volts());
-    const thin = () => Math.sqrt(Math.max(0, 1 - across() / (led().on + BARRIER)));
+    const thin = () => Math.sqrt(1 - across() / (led().on + BARRIER));
     const clear = () => CLEAR * Math.sqrt(10 / many3()) * thin();
     const anyY = () => JUN.lo + 0.3 + Math.random() * (JUN.hi - JUN.lo - 0.6);
     function settle3() {
@@ -869,18 +876,26 @@ export default {
       dialInk.fillStyle = '#9ff0c0'; dialInk.font = '700 64px Georgia, serif'; dialInk.textAlign = 'center'; dialInk.textBaseline = 'middle'; dialInk.fillText(`${volts().toFixed(2)} V`, 128, 60);
       dial.needsUpdate = true;
     }
-    // the least voltage at which the diode in the holder has been seen alight: kept, and written in the table and on the graph
-    function note3() {
-      const id = ctx.values.led, volt = ctx.values.volt;
-      if (photo() || amps() < SEEN || (found.has(id) && found.get(id) <= volt)) return;
-      found.set(id, volt);
-      ctx.tables.table3.clear();
+    // what has been found, written anew in the table and on the graph. The table's own clear() (its 지우기 button) is made
+    // to forget what was found as well: the dots go with the rows, and a diode wiped is found afresh
+    const wipe3 = ctx.tables.table3.clear;
+    function write3() {
+      wipe3();
       for (const key of Object.keys(LEDS)) {
         ctx.traces[`v${key}`].clear();
         for (const one of FREQS) ctx.traces[`v${key}`].add(hertz(one), one === key && found.has(key) ? found.get(key) : NaN);
         if (!found.has(key)) continue;
         ctx.tables.table3.add([LEDS[key].name, String(LEDS[key].wave), hertz(key).toFixed(2), found.get(key).toFixed(2)]);
       }
+    }
+    ctx.tables.table3.clear = () => { found.clear(); write3(); };
+    // the least voltage at which the diode in the holder has been seen alight: kept, and written in the table and on the graph.
+    // Nothing is kept while all is put back (quiet), nor while the frame takes the photodiode out on leaving the advanced
+    // mode (wasAdvanced, below, is not brought up to date until that is done): the voltage is then one set for another diode
+    function note3() {
+      const id = ctx.values.led, volt = ctx.values.volt;
+      if (quiet || ctx.advanced !== wasAdvanced || photo() || amps() < SEEN || (found.has(id) && found.get(id) <= volt)) return;
+      found.set(id, volt); write3();
     }
     function toStart3() {
       quiet = true;
@@ -893,9 +908,9 @@ export default {
     // wires over; a diode of the rack is carried to the holder, or pressed. (advanced) The lamp is pulled sideways.
     const home3 = new T.Vector3(), onRow = (x, y, z, out) => out.set(x, y, z).multiplyScalar(row3.scale.x).add(row3.position);   // a point of the bench row, as the labels and the hand need it
     const ledTool = {
-      handles: () => [...(photo() ? [lampHandle] : [knobHandle, plugHandle]), ...Object.values(spares).filter((one) => one.id !== 'pd' || ctx.advanced).map((one) => one.grip)],
+      handles: () => [...(photo() ? [lampHandle] : [knobHandle, plugHandle]), ...Object.values(spares).filter((one) => one.id !== ctx.values.led && (one.id !== 'pd' || ctx.advanced)).map((one) => one.grip)],   // (the one in the holder is not in the rack: its place there is not to be handled)
       start(grip, r) {
-        const key = { knob: 'volt', plug: 'turned', led: 'led', lamp: 'light' }[grip.kind], one = spares[grip.id];
+        const key = { knob: 'volt', led: 'led', lamp: 'light' }[grip.kind], one = spares[grip.id];   // (what can be locked: the posts cannot)
         onRow(...(grip.kind === 'knob' ? [SUP + 0.62, 0.54, 0.6] : grip.kind === 'plug' ? [SUP, 1.2, 0] : grip.kind === 'lamp' ? [SHADE.x, 0.9, SHADE.z] : [one.rest.x, 0.5, 0]), way);
         if (ctx.locked.has(key)) { say('잠금', way.x, way.y + 0.6, way.z, 1.2); return false; }
         const at = way.clone();
@@ -923,7 +938,7 @@ export default {
       end(done) {
         if (done.kind === 'plug') { ctx.set('turned', forward()); return; }
         if (done.kind !== 'led' || !(!done.moved || done.near)) return;
-        if (ctx.values.led !== done.id) ctx.set('led', done.id); else if (!running) ctx.setPlaying(true);
+        ctx.set('led', done.id);
       },
     };
 
@@ -940,7 +955,7 @@ export default {
         ball.visible = Boolean(mover);
         if (mover) ball.position.set(mover.x, mover.y, gap ? 0.12 : 0.16);
       });
-      strip.visible = adv && bare > 0.01; strip.scale.x = Math.max(0.01, 2 * bare); bare3.repeat.x = 2 * bare / JUN.w; bare3.offset.x = 0.5 - bare / JUN.w;
+      strip.visible = adv; strip.scale.x = 2 * bare; bare3.repeat.x = 2 * bare / JUN.w; bare3.offset.x = 0.5 - bare / JUN.w;
       torch.visible = pd; glowInk.opacity = 0.32 * v.light / 100; bulbInk.emissive.setScalar(v.light / 100);
       for (const beam of beams) {
         beam.group.visible = beam.age < LIFE;
@@ -972,7 +987,7 @@ export default {
       labels3.supply.write(pd ? '<b>0.00 V</b>' : `<b>${v.volt.toFixed(2)} V</b>${up ? '<br>' : ' · '}${fore ? '순방향 연결' : '<b>역방향 연결</b>'}`);
       labels3.ohm.write(pd ? `저항 100 Ω${up ? '<br>' : ' · '}<b>${drop.toFixed(2)} V</b>` : '저항 100 Ω');   // (the photodiode: the voltage its current puts on the resistor)
       onRow(SHADE.x, 1.62, SHADE.z, spots3.torch); labels3.torch.write(`빛의 세기 <b>${v.light} %</b>`);
-      labels3.lamp.write(pd ? (up ? `${one.name}<br>빛의 세기 <b>${v.light} %</b>` : one.name) : `${one.name} · ${on ? '<b>불빛 켜짐</b>' : '불빛 꺼짐'}`); labels3.rack.write('발광 다이오드');
+      labels3.lamp.write(pd ? (up ? `${one.name}<br>빛의 세기 <b>${v.light} %</b>` : one.name) : `${one.name} · ${on ? '<b>불빛 켜짐</b>' : '불빛 꺼짐'}`); labels3.rack.write(adv && !pd ? '다이오드' : '발광 다이오드');   // (advanced: the photodiode stands in the rack as well, unless it is in the holder)
       for (const key of Object.keys(labels3)) labels3[key].show(key === 'list' ? v.numbers : key === 'layer' ? strip.visible : key === 'torch' ? pd && !up : key === 'left' || key === 'right' ? !pd || drop >= 0.005 : true);   // (the photodiode: the p side is the higher while a current is made)
       if (v.numbers) {
         const size2 = Math.abs(current), amount = `<b>${size2 < 1 ? size2.toFixed(2) : size2.toFixed(1)} mA</b>`, lines = [];
@@ -991,7 +1006,7 @@ export default {
       }
     }
     const ledScene = {
-      rig: rig3, ids: ['led', 'volt', 'turned', 'dose', 'light'], keep: [], kept: {},
+      rig: rig3, ids: ['led', 'volt', 'turned', 'dose', 'light'],
       look: [{ target: [0.5, 2.4, 0], r: 14.5, theta: 0, phi: 1.3 }, { target: [0, 3.2, 0], r: 19, theta: 0, phi: 1.3 }],
       handles: ledTool.handles, start: ledTool.start, move: ledTool.move, end: ledTool.end,
       enter() { rig3.visible = true; settle3(); paintDial(); },
@@ -1030,7 +1045,6 @@ export default {
         return;
       }
       if (id === 'numbers') at.numbers();
-      if (at.keep.includes(id)) at.kept[id] = value;
       if (at.ids.includes(id)) at.changed(id, value);
     });
     // (the frame tells of the class and inquiry buttons as well: only a change between basic and advanced counts here)
@@ -1043,7 +1057,7 @@ export default {
       led: () => ({ led: ctx.values.led, volt: volts(), forward: forward(), amps: amps(), drop: Math.abs(amps()) * LOAD, own: inner(many3()), across: across(), thin: thin(), clear: clear(), joined: state3.joined, made: state3.made, n: many3(), holes: state3.all.filter((one) => one.side < 0).map((one) => one.x), electrons: state3.all.filter((one) => one.side > 0).map((one) => one.x), found: [...found] }),
       flow: (id, volt, lit, n) => flow(id, volt, lit, n),
       dope: () => ({ dopant: ctx.values.dopant, closed: closed(), warm: warm(), pairs: pairs2(), filled: state2.filled.slice(), frees: state2.frees.map((one) => ({ ...one })), gaps: state2.gaps.map((one) => ({ at: one.at, x: places[one.at].x, y: places[one.at].y, step: Boolean(one.step) })) }),
-      band: () => ({ temp: temp(), pairs: pairs(), lifted: lifted(ctx.values.stuff, temp()), rho: resist(ctx.values.stuff, temp()), tried: Object.fromEntries(Object.entries(tried).map(([id, map]) => [id, [...map]])), atoms: count(), levels: levelsOf(ctx.values.stuff, Math.min(count(), 8)), glow: glow(), current: current(), resist: (id, T) => resist(id, T) }),
+      band: () => ({ temp: temp(), pairs: pairs(), lifted: lifted(ctx.values.stuff, temp()), rho: resist(ctx.values.stuff, temp()), tried: Object.fromEntries(Object.entries(tried).map(([id, map]) => [id, [...map]])), atoms: count(), levels: levelsOf(ctx.values.stuff, Math.min(count(), 8)), glow: glow(), current: current(), resist: (id, kelvin) => resist(id, kelvin) }),
       update(dt) {
         if (!framed) { framed = true; if (tall()) frame(); }
         if (tipTime > 0) { tipTime -= dt; if (tipTime <= 0) { tip.show(false); moved = true; } }

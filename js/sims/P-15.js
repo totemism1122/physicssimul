@@ -41,7 +41,7 @@ export default {
   camera: { target: [0.2, 0.2, 0.3], r: 10.5, theta: 0, phi: 0.6, rMax: 30 },   // (the disc a little to the right of the middle of the screen: the menu opens at the left)
   traces: {
     // the sine of the angle of refraction against the sine of the angle of incidence, for the angles tried (not against time):
-    // with the block as it is now, and with the other blocks tried. s0: a point that is not seen, so that the axes are drawn whichever of them is empty
+    // with the block as it is now, and with the other blocks tried. s0: a place without a value (NaN: never drawn, never read), so that the axes are drawn whichever of them is empty
     s0: { window: 1, range: 1.1 }, sn: { window: 1, range: 1.1, read: (y) => y.toFixed(3) }, so: { window: 1, range: 1.1, read: (y) => y.toFixed(3) },
     // the lens: how far the screen stood from the lens with a sharp image (cm) against how far the object stood (cm), for the places tried
     ba: { window: 100, range: 30, read: (cm) => `${cm.toFixed(1)} cm` },
@@ -212,7 +212,7 @@ export default {
     let side = 1;
     const index = () => (ctx.values.matter === 'custom' ? (ctx.advanced ? ctx.values.index : MATTER.glass.n) : MATTER[ctx.values.matter].n);
     const outward = () => ctx.advanced && ctx.values.way === 'out';   // the light meets the flat face from inside the block
-    const named = () => (ctx.values.matter === 'custom' ? `굴절률 ${index().toFixed(2)}` : MATTER[ctx.values.matter].name);
+    const named = () => (ctx.values.matter === 'custom' ? `물질(굴절률 ${index().toFixed(2)})` : MATTER[ctx.values.matter].name);
     // The light as it is now. i, r: the angles of incidence and refraction (r: null when none of the light goes on);
     // back: the part of the light thrown back at the face (of its energy, for light that is not polarised)
     function bend() {
@@ -223,7 +223,6 @@ export default {
       const rs = ((n1 * ci - n2 * cr) / (n1 * ci + n2 * cr)) ** 2, rp = ((n1 * cr - n2 * ci) / (n1 * cr + n2 * ci)) ** 2;
       return { n, out, i, sinI, r, sinR, back: (rs + rp) / 2, limit };
     }
-    const wayName = () => (outward() ? `${named()} → 공기` : `공기 → ${named()}`);
     function note() {
       fresh = false;
       const now = bend(), v = ctx.values;
@@ -567,13 +566,14 @@ export default {
       point(arrows[0], xo, v.rays || v.image ? TIP : 0); point(arrows[1], near ? xi : XL, v.image && near ? (now.real ? -1 : 1) * now.size * TIP : 0);
       if (v.image) {
         if (near) spots2.ghost.set(xi, AY - now.size * TIP - 0.12, 0); else spots2.ghost.set(XL, AY - LENS - 0.2, 0);
-        labels2.ghost.write(b === Infinity ? '상이 생기지 않음' : !near ? (now.real ? '실상이 실험대 밖에 생김' : '허상이 방 밖에 생김') : now.real ? '실상' : '허상');
+        const beyond = now.real ? xi >= 6.3 : xi <= WALL;   // (not drawn because of where it is; otherwise because of its size)
+        labels2.ghost.write(b === Infinity ? '상이 생기지 않음' : near ? (now.real ? '실상' : '허상') : beyond ? (now.real ? '실상이 실험대 밖에 생김' : '허상이 방 밖에 생김') : `${now.real ? '실상' : '허상'}이 커서 그리지 않음`);
       }
       // the writing
       spots2.near.set(Math.min((xo + XL) / 2, XL - 1.15), 0.15, 1.25); labels2.near.write(`물체까지의 거리(a) <b>${a} cm</b>`); labels2.near.show(true);
       spots2.far.set(Math.max((xs + XL) / 2, XL + 1.15), 0.15, 1.25); labels2.far.write(`스크린까지의 거리 <b>${s.toFixed(1)} cm</b>`); labels2.far.show(true);
       labels2.key.show(v.rays);
-      if (v.rays) { labels2.key.write(`① 광축에 나란한 빛<br>② ${f < 0 ? '초점을 향하는 빛' : a < f ? '초점에서 나온 것처럼 나아가는 빛' : '초점을 지나는 빛'}<br>③ 렌즈 중심을 지나는 빛`); spots2.key.set(XL - 4.3, AY + 1.25, 0); }
+      if (v.rays) { labels2.key.write(`① 광축에 나란한 빛${meets[1] === null ? '' : `<br>② ${f < 0 ? '초점을 향하는 빛' : a < f ? '초점에서 나온 것처럼 나아가는 빛' : '초점을 지나는 빛'}`}<br>③ 렌즈 중심을 지나는 빛`); spots2.key.set(XL - 4.3, AY + 1.25, 0); }   // (② is named only where it is drawn)
       labels2.lens.show(ctx.advanced); if (ctx.advanced) labels2.lens.write(`${f < 0 ? '오목 렌즈 · ' : ''}초점 거리(f) <b>${Math.abs(f)} cm</b>`);
       labels2.list.show(v.numbers);
       if (v.numbers) {
@@ -616,7 +616,9 @@ export default {
     // ones towards each other; a lens with round faces brings those near its axis to one point, and those far from the
     // axis to a nearer one. The lenses are HL high from the axis to the rim, a prism's faces meet at 40°.
     const SC = 0.4, X0 = -1, HL = 4, RY3 = 0.24, FROM = -10.5, LEFT = -17.6, RIGHT = 22.6, ACROSS = 6.8, APEX = 20 * Math.PI / 180;
-    const TINTS = { red: [[0xff4136, 0, '적색']], white: [[0xff4136, -0.3, '적색'], [0x3ddc6a, 0.24, '녹색'], [0x5a8cff, 0.7, '청색']] };   // each colour: how it is drawn, how far its index is from the index set (in parts of the spread from red to blue), its name
+    // each colour: how it is drawn, how far its index is above the index set (in parts of the spread from red to blue), its name.
+    // The index set is that of the red light, alone or as the red part of white light: the first of each list.
+    const TINTS = { red: [[0xff4136, 0, '적색']], white: [[0xff4136, 0, '적색'], [0x3ddc6a, 0.54, '녹색'], [0x5a8cff, 1, '청색']] };
     const rig3 = new T.Group(); world.add(rig3);
     add(rig3, box(16.4, 0.06, 5.6), mat(0x1d2130), 0, 0.03, 0);
     add(rig3, new T.PlaneGeometry(16.3, 5.5).rotateX(-Math.PI / 2), mat(0xffffff, { roughness: 0.9, map: canvasTexture(2038, 688, (g, w, h) => {
@@ -663,7 +665,6 @@ export default {
     // ---------- physics ----------
     // The outline of the glass: straight sides, and arcs for the faces of a lens (cx: the middle of the circle on the
     // axis; side: +1 for the part of the circle to the right of its middle, −1 for the part to the left).
-    const lensy = (values) => values.glass === 'lens' || values.glass === 'hollow';
     function outline() {
       const v = ctx.values, R = v.curve, sag = R - Math.sqrt(R * R - HL * HL), w = HL * Math.tan(APEX), line = (ax, ay, bx, by) => ({ ax, ay, bx, by });
       if (v.glass === 'prism') return { sides: [line(-w, 2, w, 2), line(w, 2, 0, -2), line(0, -2, -w, 2)], points: [[-w, 2], [w, 2], [0, -2]] };
@@ -672,7 +673,7 @@ export default {
       const face = (y) => (hollow ? cx - Math.sqrt(R * R - y * y) : Math.sqrt(R * R - y * y) - cx);   // how far to the right of the middle the right face is, at the height y
       for (let k = 0; k <= 24; k++) { const y = -HL + 2 * HL * k / 24; points.push([-face(y), y]); }
       for (let k = 24; k >= 0; k--) { const y = -HL + 2 * HL * k / 24; points.push([face(y), y]); }
-      return { sides: [{ cx: hollow ? -cx : cx, r: R, side: hollow ? 1 : -1 }, { cx: hollow ? cx : -cx, r: R, side: hollow ? -1 : 1 }, line(-rim, -HL, rim, -HL), line(-rim, HL, rim, HL)], points, thick: 2 * half };
+      return { sides: [{ cx: hollow ? -cx : cx, r: R, side: hollow ? 1 : -1 }, { cx: hollow ? cx : -cx, r: R, side: hollow ? -1 : 1 }, line(-rim, -HL, rim, -HL), line(-rim, HL, rim, HL)], points };
     }
     // A line of light from (ox, oy) along (dx, dy), in glass of the index n: the points at which it is bent, and where and which way it goes on at last
     function follow(sides, ox, oy, dx, dy, n) {
@@ -708,7 +709,6 @@ export default {
     }
     const spread = () => (ctx.values.gindex - 1) / 30;   // how much greater the index is for blue light than for red: that of a glass that parts the colours widely
     const colours = () => TINTS[ctx.values.tint].map(([color, part, name]) => ({ color, name, n: ctx.values.gindex + part * spread() }));
-    const reach = () => ctx.values.shift;   // how far the box stands from the axis (a line that passes the glass by goes straight on)
     const pointed = () => ctx.values.glass === 'lens' && ctx.values.source;   // the light comes from one point, at the focus
     // where light near the axis comes together (or seems to come from), counted from the middle of the glass, for the index n; and the same by the formula for a thin lens
     const focusOf = (sides, n) => follow(sides, FROM, 0.02, 1, 0, n).meet;
@@ -723,7 +723,7 @@ export default {
     }
     function noteGlass() {
       fresh = false; drawGlass();   // (what is written is what is drawn: the lines are followed anew first)
-      if (!last || !lensy(ctx.values) || pointed()) return;
+      if (!last || !isLens(ctx.values) || pointed()) return;
       const v = ctx.values;
       write(ctx.tables.glassTable, [v.glass === 'hollow' ? '오목' : '볼록', v.gindex.toFixed(2), String(v.curve), last.high.toFixed(1), last.near === null ? '–' : last.near.toFixed(1).replace('-', '−'), last.far === null ? '–' : last.far.toFixed(1).replace('-', '−')]);
     }
@@ -739,7 +739,7 @@ export default {
       start(grip, r) {
         if (!r.intersectPlane(level, hit)) return false;
         if (ctx.locked.has('shift')) { say('잠금', hit.x, 1.0, hit.z, 1.2); return false; }
-        grab = { ...grip, off: reach() * SC - hit.z };
+        grab = { ...grip, off: ctx.values.shift * SC - hit.z };
         return true;
       },
       move(r) {
@@ -751,14 +751,14 @@ export default {
     };
 
     function drawGlass() {
-      const v = ctx.values, list = colours(), lead = list[Math.min(1, list.length - 1)], off = reach(), point = pointed();
+      const v = ctx.values, list = colours(), lead = list[Math.min(1, list.length - 1)], off = v.shift, point = pointed();   // (off: how far the box stands from the axis; a line that passes the glass by goes straight on)
       build();
       // where the light starts: five lines side by side from the box, or five from a lamp at the focus towards as many heights of the lens
       const near = focusOf(shape.sides, lead.n), lit = !point || (near !== null && near > 0 && near < -LEFT - 0.5), heights = [-2, -1, 0, 1, 2].map((k) => (point ? 0 : off) + k * v.gap);
       lightBox.visible = !point; lamp.visible = point && lit;
       lightBox.position.z = off * SC; boxBody.scale.z = boxHandle.scale.z = (4 * v.gap + 1.2) * SC;
       if (lamp.visible) lamp.position.set(X0 - near * SC, TOP + 0.21, 0);
-      rodCount = 0; let dashes = 0, far = null, outer = -1, first = null;   // (far: the line farthest from the axis of those that meet the glass)
+      rodCount = 0; let dashes = 0, far = null, outer = -1, first = null;   // (far: the line farthest from the axis of those that meet the glass, of the light the index is set for)
       if (lit) for (const one of list) for (const high of heights) {
         const long = Math.hypot(near, high), ray = point ? follow(shape.sides, -near, 0, near / long, high / long, one.n) : follow(shape.sides, FROM, high, 1, 0, one.n);
         // (white light is white until the glass parts its colours: that stretch is drawn once, for the first of them)
@@ -771,13 +771,13 @@ export default {
         if (!plain || one === list[0]) rod3(ray.ox, ray.oy, ray.ox + t * ray.dx, ray.oy + t * ray.dy, plain ? 0xffffff : one.color);
         // light that spreads from a concave lens: drawn back to where it seems to come from
         if (v.glass === 'hollow' && ray.meet !== null && ray.meet < ray.ox && ray.meet > LEFT && Math.abs(high) > 1e-9 && dashes < backs.length) { const back = backs[dashes++]; back.material.color.setHex(one.color); lay3(back, ray.meet, 0, ray.ox, ray.oy); }
-        if (one === lead && ray.hits.length && Math.abs(high) > outer) { far = ray; outer = Math.abs(high); }
+        if (one === list[0] && ray.hits.length && Math.abs(high) > outer) { far = ray; outer = Math.abs(high); }
         if (one === lead && !first && ray.hits.length) first = ray;   // (the line nearest the back of the bench: its angles are the ones written)
       }
       for (let k = rodCount; k < RODS; k++) unitRod.setMatrixAt(k, none3);
       unitRod.count = RODS; unitRod.instanceMatrix.needsUpdate = true; if (unitRod.instanceColor) unitRod.instanceColor.needsUpdate = true;
       for (let k = dashes; k < backs.length; k++) backs[k].visible = false;
-      last = lensy(v) ? { near, far: far ? far.meet : null, high: Math.max(0, outer) } : null;
+      last = isLens(v) ? { near: focusOf(shape.sides, list[0].n), far: far ? far.meet : null, high: Math.max(0, outer) } : null;   // (what the table and the list of values give: for the light the index is set for, whatever the light)
       // the normals of the faces where the first line is bent, and its angles there
       [0, 1].forEach((k) => {
         const at = v.normals && first ? first.hits[k] : null, label = k ? labels3.b : labels3.a, spot = k ? spots3.b : spots3.a;
@@ -789,13 +789,13 @@ export default {
       });
       // the writing
       labels3.word.show(point && !lit); if (point && !lit) { labels3.word.write('초점이 판 밖에 있어 광원을 놓을 수 없음'); spots3.word.set(X0, 0.5, 0); }
-      const marked = v.numbers && lensy(v) && near !== null && near > LEFT && near < RIGHT && !point;
+      const marked = v.numbers && isLens(v) && near !== null && near > LEFT && near < RIGHT && !point;
       focusDot.visible = marked; labels3.focus.show(marked);
       if (marked) { focusDot.position.set(X0 + near * SC, RY3, 0); spots3.focus.set(X0 + near * SC, RY3 + 0.15, 0); labels3.focus.write('초점'); }
       labels3.list.show(v.numbers);
       if (v.numbers) {
         const lines = [], cm = (x) => (x === null ? '–' : `${x < 0 ? '−' : ''}${Math.abs(x).toFixed(1)}`);
-        if (lensy(v)) {
+        if (isLens(v)) {
           lines.push(`굴절률(n) <b>${v.gindex.toFixed(2)}</b> · 곡률 반지름(R) <b>${v.curve} cm</b>`, '얇은 렌즈의 식: 1 ÷ f = (n − 1) × 2 ÷ R', `→ 초점 거리(f) <b>${cm(thinFocus(v.gindex))} cm</b>`, `광선을 따라가 찾은 초점 (${v.glass === 'hollow' ? '렌즈 앞쪽이 −' : '렌즈 중심에서'})`);
           if (list.length > 1) lines.push(list.map((one) => `${one.name} <b>${cm(focusOf(shape.sides, one.n))}</b>`).join(' · ') + ' cm');
           else lines.push(`가운데 광선 <b>${cm(near)} cm</b>${point ? '' : ` · 바깥 광선 <b>${cm(last.far)} cm</b>`}`);
@@ -820,7 +820,7 @@ export default {
       mode() {},
     };
 
-    ctx.traces.s0.add(0, 0);
+    ctx.traces.s0.add(0, NaN);
     const SCENES = { bend: bendScene, lens: lensScene, pieces: glassScene }, scene = () => SCENES[ctx.values.scene];
     const frame = () => view.look(scene().look[tall() ? 1 : 0]);
     view.setTool({

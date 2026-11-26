@@ -8,7 +8,8 @@
 // (1240 eV nm ÷ its energy): the lines gathered there are compared with the lines of hydrogen as they are measured
 // (from the ultraviolet to the infrared, 0 to 2000 nm; the few that are longer are written in a box at the end).
 // While the clock runs an electron above the lowest level falls of itself, after a little while, to one of the
-// levels below. The energy levels can be shown on a board beside the atom, as the textbook draws them: a line for
+// levels below, and one on the lowest level takes in light that lifts it to one of the levels above (not while the
+// lamp of the advanced mode is used). The energy levels can be shown on a board beside the atom, as the textbook draws them: a line for
 // each n, as high as its energy, so that the upper ones lie close together.
 // Advanced: a lamp sends photons of an energy that is set at the atom, one each time it is pressed (on the board
 // of the levels an arrow from the electron's level shows how far up that energy reaches). A photon is taken in
@@ -42,7 +43,7 @@ const SERIES = { 1: '라이먼 계열', 2: '발머 계열', 3: '파셴 계열' }
 const SEEN = [121.6, 102.6, 97.3, 95.0, 93.8, 656.3, 486.1, 434.0, 410.2, 1875, 1282, 1094];   // the lines of hydrogen as they are measured (nm): those between the levels up to TOP that are shorter than 2000 nm
 const wave = (nm) => (nm < 200 ? nm.toFixed(1) : nm.toFixed(0));   // a wavelength as it is written
 const minus = (text) => text.replace('-', '−');
-// (advanced) the atoms with one electron, by the number of protons: their names, and the lamp's photons for each (the item of the menu, the most energy in eV, and what it is set to at first)
+// (advanced) the atoms with one electron, by the number of protons: their names in full and in short
 const ATOMS = { 1: { name: '수소 원자', kind: '수소' }, 2: { name: '헬륨 이온 He<sup>+</sup>', kind: '헬륨 이온' }, 3: { name: '리튬 이온 Li<sup>2+</sup>', kind: '리튬 이온' } };
 // (the cloud) the states that can be shown (n, l), the part of the wave function that goes by the distance r from the nucleus (in Bohr radii), and how far out the dots of each n are looked for
 const ORBITALS = { '1s': [1, 0], '2s': [2, 0], '2p': [2, 1], '3s': [3, 0], '3p': [3, 1], '3d': [3, 2] };
@@ -53,16 +54,16 @@ const RADIAL = {
 const REACH = { 1: 8, 2: 20, 3: 34 }, PACE = { slow: 20, mid: 200, fast: 2000 };   // (PACE: dots a second)
 const dense = (name, r) => (r * RADIAL[name](r)) ** 2;   // how likely the electron is to be found at the distance r, whatever the direction
 const onOrbit = (v) => v.scene === 'orbit', onCloud = (v) => v.scene === 'cloud';   // which arrangement an item of a menu belongs to
-const BEAM = { 1: { id: 'photon', most: 15, first: 10 }, 2: { id: 'photon2', most: 60, first: 40 }, 3: { id: 'photon3', most: 135, first: 90 } };
+const BEAM = { 1: { id: 'photon', most: 15, first: 10 }, 2: { id: 'photon2', most: 60, first: 40 }, 3: { id: 'photon3', most: 135, first: 90 } };   // (advanced) the lamp's photons for each of those atoms: the item of the menu, the most energy in eV, and what it is set to at first
 
 export default {
   // what is taken for granted, written on screen by the frame
-  premise: (v) => (onCloud(v) ? `점 하나는 같은 상태의 수소 원자에서 전자의 위치를 한 번 잰 결과입니다. 원자핵은 훨씬 크게 그렸습니다${/[pd]/.test(v.orbital) ? '. 방향이 여럿인 오비탈은 위아래 방향의 것 하나를 그렸습니다' : ''}` : `궤도의 반지름은 실제 비율(n²)대로, 원자핵과 전자는 훨씬 크게 그렸습니다${v.z !== '1' ? `(궤도는 ${v.z}배로 확대)` : ''}. 재생 중에는 바닥상태의 전자가 알맞은 빛을 흡수해 들뜨고, 들뜬 전자는 아래 궤도 가운데 하나로 내려간다고 보았습니다(실제보다 훨씬 느리게, 어느 궤도로 갈지는 같은 확률로)${v.chart ? '. 에너지 준위 그림의 높이는 에너지에 비례합니다' : ''}${v.shine ? '. 비춘 빛은 전자를 높은 준위로만 옮긴다고 보았습니다' : ''}`),
+  premise: (v) => (onCloud(v) ? `점 하나는 같은 상태의 수소 원자에서 전자의 위치를 한 번 잰 결과입니다. 원자핵은 훨씬 크게 그렸습니다${/[pd]/.test(v.orbital) ? '. 방향이 여럿인 오비탈은 위아래 방향의 것 하나를 그렸습니다' : ''}` : `궤도의 반지름은 실제 비율(n²)대로, 원자핵과 전자는 훨씬 크게 그렸습니다${v.z !== '1' ? `(궤도는 ${v.z}배로 확대)` : ''}. 재생 중에는 ${v.shine ? '들뜬 전자가' : '바닥상태의 전자가 알맞은 빛을 흡수해 들뜨고, 들뜬 전자는'} 아래 궤도 가운데 하나로 내려간다고 보았습니다(실제보다 훨씬 느리게, 어느 궤도로 갈지는 같은 확률로)${v.chart ? '. 에너지 준위 그림의 높이는 에너지에 비례합니다' : ''}${v.shine ? '. 바닥상태의 전자는 등에서 쏜 광자를 흡수할 때만 들뜨고, 비춘 빛은 전자를 높은 준위로만 옮긴다고 보았습니다' : ''}`),   // (while the lamp is used the electron on the lowest level is not lifted of itself)
   fixedViews: ['front'],
   camera: { target: [0.6, 2.7, 0.4], r: 16, theta: 0, phi: 1.3, rMax: 40 },   // (low, so that the strip stands clear of the writing along the foot of the screen)
   traces: {
-    // the cloud: how many dots lie in each shell about the nucleus, against how far out the shell is (nm); and a mark at the radius of Bohr's orbit
-    cr: { window: 2, range: 10, read: (y) => `${Math.round(y)}개` }, cb: { window: 2, range: 10, read: (y) => `${Math.round(y)}개` },
+    // the cloud: how many dots lie in each shell about the nucleus, against how far out the shell is (nm); and a mark at the radius of Bohr's orbit (it is no count: nothing is written for it where the graph is pressed)
+    cr: { window: 2, range: 10, read: (y) => `${Math.round(y)}개` }, cb: { window: 2, range: 10, read: () => '' },
   },
   menus: {
     vars: [
@@ -121,6 +122,15 @@ export default {
     // (advanced) how many protons the nucleus holds; the energy of the level n of that atom (eV); the lamp's photons for it, and their energy now
     const zed = () => (ctx.advanced ? Number(ctx.values.z) : 1), lev = (n) => level(n) * zed() * zed(), beam = () => BEAM[zed()], shot = () => ctx.values[beam().id];
     const told2 = (energy) => minus(energy.toFixed(Math.abs(energy) >= 10 ? 1 : 2));   // an energy as it is written on the board
+    // With how many decimals the energies of a step between two levels are written, in the list of values and in the
+    // table: two, or three where two would not give the results written beside them when the sums are done with the
+    // numbers as written. No more than three (the user's rule for the digits that count), though a few steps between
+    // high levels then give a wavelength a little off the one written.
+    function digits(one, other) {
+      const energy = Math.abs(lev(one) - lev(other)), upper = Math.max(lev(one), lev(other)), lower = Math.min(lev(one), lev(other));
+      for (let d = 2; d < 3; d++) if ((Number(upper.toFixed(d)) - Number(lower.toFixed(d))).toFixed(d) === energy.toFixed(d) && wave(HC / Number(energy.toFixed(d))) === wave(HC / energy)) return d;
+      return 3;
+    }
     const UP = new T.Vector3(0, 1, 0), DOWN = new T.Vector3(0, -1, 0), RIGHT = new T.Vector3(1, 0, 0), LEFT = new T.Vector3(-1, 0, 0);
 
     // ---------- the atom ----------
@@ -226,6 +236,7 @@ export default {
     function land(flight) { flight.ball.group.visible = false; flights.splice(flights.indexOf(flight), 1); flight.done(); moved = true; }
     // the electron goes from one level to another
     function jump(from, to) {
+      if (from === to) return;   // (no step, no light)
       for (const flight of flights.filter((one) => one.into)) land(flight);   // (what was coming to the electron has come)
       const energy = Math.abs(lev(from) - lev(to)), nm = HC / energy, out = to < from;
       last = { from, to, energy, nm, out };
@@ -234,7 +245,7 @@ export default {
         launch(new T.Vector3(C.x + (wide(from) + wide(to)) / 2, C.y, C.z + 0.05), onStrip(place(nm), 0.78, new T.Vector3()), 0.9, nm, false, () => { made.set(`${from} → ${to}`, nm); latest = nm; paintStrip(); });
       } else if (lit) seat = to;   // (the photon has come already)
       else launch(new T.Vector3(C.x - 3.3, C.y + 2.4, C.z + 0.8), seatOf(from, new T.Vector3()), 0.55, nm, true, () => { seat = to; });
-      ctx.tables.table.add([ATOMS[zed()].kind, `${from} → ${to}`, out ? '방출' : '흡수', energy.toFixed(2), wave(nm), bandOf(nm), (zed() === 1 && SERIES[Math.min(from, to)]) || '–']);
+      ctx.tables.table.add([ATOMS[zed()].kind, `${from} → ${to}`, out ? '방출' : '흡수', energy.toFixed(digits(from, to)), wave(nm), bandOf(nm), (zed() === 1 && SERIES[Math.min(from, to)]) || '–']);
       say(`${out ? '빛을 방출' : '빛을 흡수'} <b>${wave(nm)} nm</b>`, C.x + 1.4, C.y - 1.9, C.z, 2.2);
       wait = 0.8 + Math.random() * 1.2;
     }
@@ -273,12 +284,14 @@ export default {
       paintStrip(); paintBoard(); moved = true;
     }
     function toStart() {
+      const held = ctx.locked.has('n') ? { at, gone } : null;   // (an electron whose orbit is held stays where it is)
       if (ctx.advanced) {
-        if (ctx.values.shine && !ctx.locked.has('shine')) ctx.set('shine', false);
+        if (ctx.values.shine) ctx.set('shine', false);
         for (const one of Object.values(BEAM)) if (ctx.values[one.id] !== one.first && !ctx.locked.has(one.id)) ctx.set(one.id, one.first);
         if (ctx.values.z !== '1' && !ctx.locked.has('z')) ctx.set('z', '1');
       }
       clear();
+      if (held) { at = seat = held.at; gone = held.gone; if (ctx.values.n !== String(at)) { quiet = true; ctx.set('n', String(at)); quiet = false; } }
     }
 
     // ---------- the pictures ----------
@@ -316,8 +329,8 @@ export default {
       }
       pen.fillStyle = '#6f7890'; pen.font = '19px Georgia, serif';
       const words = zed() === 1 ? 1580 : 1450;   // (where no line of that atom falls)
-      pen.fillText(`관찰한 ${ATOMS[zed()].kind} 선스펙트럼`, of(words), Y(1.375)); pen.fillText('전이에서 방출된 빛', of(words), Y(0.775));
-      // (the lines of the ions lie where hydrogen's would, at a quarter or a ninth of the wavelength)
+      pen.fillText(zed() === 1 ? '관찰한 수소 선스펙트럼' : `식으로 구한 ${ATOMS[zed()].kind}의 선스펙트럼`, of(words), Y(1.375)); pen.fillText('전이에서 방출된 빛', of(words), Y(0.775));
+      // (the lines of the ions are not measured ones: they are reckoned, and lie where hydrogen's would, at a quarter or a ninth of the wavelength)
       const seen = zed() === 1 ? SEEN : [1, 2, 3, 4, 5].flatMap((lo) => [2, 3, 4, 5, 6].filter((hi) => hi > lo).map((hi) => HC / (lev(hi) - lev(lo)))).filter((nm) => nm <= 2000);
       for (const nm of seen) { pen.fillStyle = paint(tintOf(nm)); pen.fillRect(of(nm) - 1.5, Y(1.6), 3, row); }
       const long = [];
@@ -391,7 +404,7 @@ export default {
       const on = clouded();
       only.visible = orbs.visible = !on; cloud.visible = on; labels.count.show(false); labels.list.shift = 0;
       spots.name.set(C.x - 1.75, C.y + 2.35, C.z - 2.5);
-      if (on) { for (const flight of flights) flight.ball.group.visible = false; flights.length = 0; tip.show(false); wipe(); }
+      if (on) { while (flights.length) land(flights[0]); tip.show(false); tipTime = 0; wipe(); }   // (the photons on their way arrive at once, so that the electron, the strip and the table agree when this arrangement is come back to)
       moved = true;
     }
 
@@ -494,8 +507,8 @@ export default {
         if (last && !last.to) lines.push(`n = ${last.from}에서 이온화: 빛을 흡수`, `전자의 운동 에너지 = ${last.energy.toFixed(2)} − ${(-lev(last.from)).toFixed(2)} = <b>${last.ke.toFixed(2)} eV</b>`);
         else if (last && lamped) lines.push(`n = ${last.from} → n = ${last.to}: 빛을 ${last.out ? '방출' : '흡수'} <b>${last.energy.toFixed(2)} eV</b>, <b>${wave(last.nm)} nm</b>`);
         else if (last) {
-          const a = minus(lev(last.from).toFixed(2)), b = minus(lev(last.to).toFixed(2)), [hi, lo] = last.out ? [a, b] : [b, a];
-          lines.push(`n = ${last.from} → n = ${last.to}: 빛을 ${last.out ? '방출' : '흡수'}`, '광자의 에너지 = 두 준위의 에너지 차', `= ${hi} − (${lo}) = <b>${last.energy.toFixed(2)} eV</b>`, `파장 = 1240 ÷ ${last.energy.toFixed(2)} = <b>${wave(last.nm)} nm</b>`, `${bandOf(last.nm)}${zed() === 1 && SERIES[Math.min(last.from, last.to)] ? ` · ${SERIES[Math.min(last.from, last.to)]}` : ''}`);
+          const d = digits(last.from, last.to), a = minus(lev(last.from).toFixed(d)), b = minus(lev(last.to).toFixed(d)), [hi, lo] = last.out ? [a, b] : [b, a];
+          lines.push(`n = ${last.from} → n = ${last.to}: 빛을 ${last.out ? '방출' : '흡수'}`, '광자의 에너지 = 두 준위의 에너지 차', `= ${hi} − (${lo}) = <b>${last.energy.toFixed(d)} eV</b>`, `파장 = 1240 ÷ ${last.energy.toFixed(d)} = <b>${wave(last.nm)} nm</b>`, `${bandOf(last.nm)}${zed() === 1 && SERIES[Math.min(last.from, last.to)] ? ` · ${SERIES[Math.min(last.from, last.to)]}` : ''}`);
         } else lines.push(`준위의 에너지 = −13.6${zed() > 1 ? ` × ${zed()}²` : ''} ÷ n² (eV)`);
         labels.list.write(lines.join('<br>'));
         if (tall()) spots.list.set(C.x, v.chart ? C.y + 3.15 + SMALL * (FACE.hi + 0.15) : C.y + 3.1, C.z - 2.6); else if (v.chart) spots.list.set(C.x, C.y + 3.1, C.z - 2.6); else spots.list.set(5.2, 1.9, C.z);
@@ -516,7 +529,10 @@ export default {
       if ((id === 'more' || id === 'less') && !ctx.locked.has(beam().id)) ctx.set(beam().id, Math.max(0.1, Math.min(beam().most, Math.round((shot() + (id === 'more' ? 0.01 : -0.01)) * 100) / 100)));
     });
     ctx.on('view', () => { moved = true; });
+    const was = { ...ctx.values };   // the values as they last were: pressing what is chosen already changes nothing
     ctx.on('change', (id, value) => {
+      if (was[id] === value) return;
+      was[id] = value;
       moved = true;
       if (id === 'n' && !quiet) {
         if (at) { const from = at; at = Number(value); jump(from, at); } else { at = seat = Number(value); gone = null; last = null; told = ''; say(`전자를 n = ${at}에 놓음`, C.x + wide(at), C.y - 0.75, C.z, 2); }   // (after the electron has left: another is put on an orbit, and nothing is given out)

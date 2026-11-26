@@ -59,7 +59,7 @@ export default {
     // (advanced) not against time, for what has been tried: the greatest energy of the electrons freed (eV) against the
     // frequency of the light (10^14 Hz), with this metal (kf) and with the others (kg); and how many electrons are freed
     // in a second (1 for the ultraviolet lamp on zinc) against the strength of the light, with this light (nf) and with
-    // the others (ng). k0, n0: a point that is not seen, so that the axes are drawn whichever of them is empty
+    // the others (ng). k0, n0: a place without a value, so that the axes are drawn whichever of them is empty
     k0: { window: 100, range: 2 }, kf: { window: 100, range: 2, read: (y) => `${y.toFixed(2)} eV` }, kg: { window: 100, range: 2, read: (y) => `${y.toFixed(2)} eV` },
     // the double slit: how many electrons have arrived in each strip of the screen, against the place of the strip (μm)
     nx: { window: 3000, range: 10, read: (y) => `${Math.round(y)}개` },
@@ -245,6 +245,12 @@ export default {
       }
     }
     function charge() { note(); q = sign(); begin(); moved = true; }
+    // The positive charge counts in the advanced mode only: outside it the value goes back to negative. And the charge
+    // the electroscope holds always has the sign the value tells (whichever arrangement is on show).
+    function accord() {
+      if (!ctx.advanced && ctx.values.sign !== 'minus') ctx.set('sign', 'minus');
+      if (q * sign() < 0) { q = sign(); moved = true; }
+    }
     function advance(t, dt) {
       const one = light();
       if (one) {
@@ -276,7 +282,8 @@ export default {
     }
     function toStart() {
       note();
-      for (const [key, value] of [['light', 'none'], ['count', 1], ['freq', 6], ['power', 1], ['metal', 'zinc'], ['sign', 'minus'], ['pane', false]]) if (!ctx.locked.has(key) && ctx.values[key] !== value) ctx.set(key, value);
+      for (const [key, value] of [['light', 'none'], ['count', 1], ['freq', 6], ['power', 1], ['metal', 'zinc'], ['sign', 'minus']]) if (!ctx.locked.has(key) && ctx.values[key] !== value) ctx.set(key, value);
+      if (ctx.values.pane) ctx.set('pane', false);
       q = sign(); flying.length = freed.length = 0; pour = 0; ctx.traces.leaf.clear(); begin(); moved = true;
     }
 
@@ -291,13 +298,15 @@ export default {
         const one = things[grip.kind];
         plane.setFromNormalAndCoplanarPoint(way.copy(r.direction).negate(), one.group.position);
         if (!r.intersectPlane(plane, hit)) return false;
-        if (grip.kind !== 'rod' && ctx.locked.has('light')) { say('잠금', one.group.position.x, one.group.position.y + 0.9, one.group.position.z, 1.2); return false; }
-        grab = { ...grip, off: one.group.position.clone().sub(hit), from: hit.clone(), at: one.group.position.clone(), moved: false, near: false, done: false };
+        const locked = grip.kind !== 'rod' && ctx.locked.has('light');   // (the light is held: none is carried, but the phone can still be pressed for another lamp)
+        if (locked && grip.kind !== 'phone') { say('잠금', one.group.position.x, one.group.position.y + 0.9, one.group.position.z, 1.2); return false; }
+        grab = { ...grip, off: one.group.position.clone().sub(hit), from: hit.clone(), at: one.group.position.clone(), moved: false, near: false, done: false, locked };
         return true;
       },
       move(r) {
         if (!r.intersectPlane(plane, hit)) return;
         if (!grab.moved && hit.distanceTo(grab.from) < 0.12) return;   // (a press is not a pull)
+        if (grab.locked) { if (!grab.moved) say('잠금', grab.at.x, grab.at.y + 0.9, grab.at.z); grab.moved = true; return; }   // (pulled all the same: it stays where it is)
         grab.moved = true; grab.at.copy(hit).add(grab.off); grab.at.y = Math.max(0.1, grab.at.y);
         grab.near = r.distanceToPoint(grab.kind === 'rod' ? TOUCH : SLOT) < (grab.kind === 'rod' ? 1.0 : 1.3);
         if (grab.kind === 'rod' && grab.near && !grab.done) { grab.done = true; charge(); }
@@ -308,6 +317,7 @@ export default {
           if (done.kind === 'phone' && !ctx.locked.has('count')) ctx.set('count', ctx.values.count % 3 + 1);
           return;
         }
+        if (done.locked) return;
         const to = done.near ? done.kind : ctx.values.light === done.kind ? 'none' : ctx.values.light;
         if (to !== ctx.values.light) ctx.set('light', to);
         if (done.near) ctx.setPlaying(true);   // (the light is on from the moment it is in its place)
@@ -361,10 +371,14 @@ export default {
         const f0 = threshold(), lines = [`${metal().name}의 문턱 진동수 <b>${f0.toFixed(1)} ×10¹⁴ Hz</b>`];
         if (one) {
           const part = share(one), energy = (f) => (PLANCK * f).toFixed(1);
+          const same = one.lo === one.hi && one.lo.toFixed(1) === f0.toFixed(1);   // (the frequency and the threshold are written alike: neither is called the greater, though which is still decides)
           lines.push(`빛의 진동수(f) <b>${band(one)} ×10¹⁴ Hz</b>`, `광자 1개의 에너지 = hf = <b>${one.lo === one.hi ? energy(one.lo) : `${energy(one.lo)}~${energy(one.hi)}`} eV</b>`);
           if (glassed() && one.hi > GLASS) lines.push('유리판이 자외선을 막음');
-          lines.push(part > 0 ? (one.lo === one.hi || part === 1 ? '문턱 진동수보다 큼 → 광전자가 방출됨' : '문턱 진동수보다 큰 빛만 광전자를 방출함') : one.hi > f0 ? '광전자가 방출되지 않음' : '문턱 진동수보다 작음 → 광전자가 방출되지 않음');
-          if (ctx.advanced && part > 0) lines.push('광전자의 최대 운동 에너지 = hf − 일함수', `= ${energy(Math.min(one.hi, glassed() ? GLASS : one.hi))} − ${metal().work.toFixed(1)} = <b>${(PLANCK * Math.min(one.hi, glassed() ? GLASS : one.hi) - metal().work).toFixed(1)} eV</b>`);
+          lines.push(part > 0 ? (same ? '문턱 진동수와 거의 같음(조금 큼) → 광전자가 방출됨' : one.lo === one.hi || part === 1 ? '문턱 진동수보다 큼 → 광전자가 방출됨' : '문턱 진동수보다 큰 빛만 광전자를 방출함') : one.hi > f0 ? '광전자가 방출되지 않음' : same ? '문턱 진동수와 거의 같음(조금 작음) → 광전자가 방출되지 않음' : '문턱 진동수보다 작음 → 광전자가 방출되지 않음');
+          if (ctx.advanced && part > 0) {   // (with two decimals where one would write the same number twice; no sum where next to nothing is left over)
+            const hf = PLANCK * Math.min(one.hi, glassed() ? GLASS : one.hi), work = metal().work, digits = hf - work < 0.05 ? 2 : 1;
+            lines.push('광전자의 최대 운동 에너지 = hf − 일함수', same ? '= <b>거의 0 eV</b>' : `= ${hf.toFixed(digits)} − ${work.toFixed(digits)} = <b>${(hf - work).toFixed(digits)} eV</b>`);
+          }
           if (part > 0 && q >= 0) lines.push(q > 0 ? '양(+)전하를 띤 판으로 광전자가 되돌아옴' : '전하가 없는 판으로 광전자가 되돌아옴');
         }
         labels.list.write(lines.join('<br>')); if (tall()) spots.list.set(EX, 0, 3.2); else spots.list.set(EX - 5.0, 2.6, 0);
@@ -375,13 +389,13 @@ export default {
       rig, ids: ['light', 'count', 'freq', 'power', 'metal', 'sign', 'pane'], keep: ['photons', 'electrons'], kept: { photons: false, electrons: false },
       look: [{ target: [0.4, 3.0, 0], r: 16, theta: 0.22, phi: 1.36 }, { target: [EX, 3.2, 0], r: 17, theta: 0.2, phi: 1.25 }],
       handles: tool.handles, start: tool.start, move: tool.move, end: tool.end,
-      enter() { rig.visible = true; ctx.setView('front'); },
+      enter() { rig.visible = true; note(); begin(); ctx.traces.leaf.clear(); ctx.setView('front'); },   // (the clock is at nought again: what was being tried is written as it stood, and the record of the leaves begins anew)
       leave() { rig.visible = false; for (const label of [...Object.values(labels), ...Object.values(things).map((item) => item.label)]) label.show(false); },
       // (what was being tried is over: its line is written as it stood, and another trial begins)
       changed(id) { note(); if (id === 'sign') q = sign(); if (id === 'metal' || id === 'light') flying.length = freed.length = 0; begin(); fresh = true; since = performance.now(); },
       play(on) { if (!on) note(); },
       tick: advance, toStart, draw, mark,
-      mode() { note(); if (Math.sign(q) === 1 && sign() < 0) q = -1; begin(); fresh = true; since = performance.now(); },   // (the positive charge, the other metals, the glass and the lamp that is set count in the advanced mode only)
+      mode() { note(); begin(); fresh = true; since = performance.now(); },   // (the other metals, the glass and the lamp that is set count in the advanced mode only; the positive charge: accord())
     };
 
     // ====================================== the double slit for electrons ======================================
@@ -500,7 +514,8 @@ export default {
     }
     function toStartBeam() {
       noteBeam();
-      for (const [key, value] of [['kind', 'electron'], ['by', 'speed'], ['speed', 1.5], ['volt', 600], ['speedN', 8.2], ['speedC', 11.4], ['gap', 250], ['rate', 'mid'], ['card', true]]) if (!ctx.locked.has(key) && ctx.values[key] !== value) ctx.set(key, value);
+      for (const [key, value] of [['kind', 'electron'], ['by', 'speed'], ['speed', 1.5], ['volt', 600], ['speedN', 8.2], ['speedC', 11.4], ['gap', 250], ['rate', 'mid']]) if (!ctx.locked.has(key) && ctx.values[key] !== value) ctx.set(key, value);
+      if (!ctx.values.card) ctx.set('card', true);
       beginBeam(); moved = true;
     }
     // (in the basic mode it is electrons, their speed set as it is, and the slits 250 nm apart: what the menu then offers goes by these)
@@ -514,7 +529,6 @@ export default {
       start(grip, r) {
         plane.setFromNormalAndCoplanarPoint(way.copy(r.direction).negate(), card.position);
         if (!r.intersectPlane(plane, hit)) return false;
-        if (ctx.locked.has('card')) { say('잠금', card.position.x, card.position.y + 0.9, card.position.z, 1.2); return false; }
         grab = { ...grip, off: card.position.clone().sub(hit), from: hit.clone(), at: card.position.clone(), moved: false, near: false };
         return true;
       },
@@ -587,7 +601,10 @@ export default {
     ctx.on('tick', (t, dt) => { if (!dt) return; scene().tick(t, dt); moved = true; });
     ctx.on('action', (id) => { if (id === 'reset') scene().toStart(); if (id === 'charge' && onGlow(ctx.values)) charge(); });
     ctx.on('view', () => { moved = true; });
+    const was = { ...ctx.values };   // the values as they last were: pressing what is chosen already changes nothing
     ctx.on('change', (id, value) => {
+      if (was[id] === value) return;
+      was[id] = value;
       const at = scene();
       moved = true;
       if (id === 'scene') {   // the other arrangement: its switches as they were left, the clock at nought
@@ -601,9 +618,9 @@ export default {
     });
     // (the frame tells of the class and inquiry buttons as well: only a change between basic and advanced counts here)
     let wasAdvanced = ctx.advanced;
-    ctx.on('mode', () => { moved = true; if (ctx.advanced === wasAdvanced) return; wasAdvanced = ctx.advanced; scene().mode(); });
+    ctx.on('mode', () => { moved = true; if (ctx.advanced === wasAdvanced) return; wasAdvanced = ctx.advanced; accord(); scene().mode(); });
 
-    ctx.traces.k0.add(0, 0); ctx.traces.n0.add(0, 0);
+    ctx.traces.k0.add(0, NaN); ctx.traces.n0.add(0, NaN);   // (no value: a press on the graph never reads them)
     begin(); beamScene.leave(); glowScene.enter();
     return {
       beam: () => ({ kind: kind().name, gap: gap(), speed: speed(), push: push(), lambda: lambda(), fringe: fringe(), chance, count: run2.at.length, bins: run2.bins, card: card.position.toArray(), strip: STRIP }),

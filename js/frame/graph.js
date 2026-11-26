@@ -82,7 +82,8 @@ function keepDrawn(canvas, key, paint) {
 // marks: [[value, name], …]. Numbers on an axis, each with a faint line across the plot: on a plot for its value axis,
 // on the item for the horizontal axis (written under the last plot; one that would run into the axis's name is left out).
 // A line may have dots: true of its own. A sample may be NaN: a place of the record that is empty (a line breaks there).
-// What read() gives as '' is left out of the writing at a marked point.
+// What read() gives as '' is left out of the writing at a marked point. At a marked point each line is read at its own
+// sample nearest the mark, so the lines of a plot need not have their samples at the same places (or any at all).
 export function createGraph(canvas, item, traces) {
   const none = createTrace();   // a plot without a record shows its axes only
   const plots = (item.plots || [{ y: item.y }]).map((plot) => ({
@@ -164,18 +165,24 @@ export function createGraph(canvas, item, traces) {
         g.fillText('넓이 ' + sums.join('  ') + ' ' + area, last ? left : right, (i + 1) * each + size * 0.75);
       }
       if (mark === null || mark < start || mark > end) return;
-      let k = 0;                                   // the sample nearest the marked moment
-      for (let j = 1; j < n; j++) if (Math.abs(lead.t[j] - mark) < Math.abs(lead.t[k] - mark)) k = j;
-      let from = k;                                // time is counted from where this stretch of the record began
-      while (from > 0 && !lead.gap[from]) from--;
-      const x = px(lead.t[k]), at = (trace) => trace.v[Math.min(k, trace.v.length - 1)];
+      // Each line is read at its own sample nearest the marked place (only samples that hold a value count). The mark
+      // stands at the nearest of these, of any line; a line with nothing near there (it is empty, or its points were
+      // tried one by one at other places) is left out, so that lines need not have their samples at the same places.
+      const near = (trace) => { let k = -1; for (let j = 0; j < trace.t.length; j++) if (Number.isFinite(trace.v[j]) && (k < 0 || Math.abs(trace.t[j] - mark) < Math.abs(trace.t[k] - mark))) k = j; return k; };
+      const picks = lines.map((line) => ({ ...line, k: near(line.trace) })).filter((one) => one.k >= 0);
+      if (!picks.length) return;
+      const here = picks.reduce((a, b) => (Math.abs(b.trace.t[b.k] - mark) < Math.abs(a.trace.t[a.k] - mark) ? b : a)), place = here.trace.t[here.k];
+      const shown = picks.filter((one) => Math.abs(one.trace.t[one.k] - place) <= span * 0.015);
+      let from = here.k;                           // time is counted from where this stretch of the record began
+      while (from > 0 && !here.trace.gap[from]) from--;
+      const x = px(place), at = (one) => one.trace.v[one.k];
       g.strokeStyle = 'rgba(243, 238, 223, 0.5)'; g.lineWidth = 1;
       g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke();
       g.fillStyle = '#f3eedf';
-      for (const { trace } of lines) { g.beginPath(); g.arc(x, py(at(trace)), 3.5, 0, Math.PI * 2); g.fill(); }
-      const text = lines.map(({ trace, name }) => { const value = trace.read(at(trace)); return value && `${name ? `${name} ` : ''}${value}`; }).filter(Boolean).join('   ');
-      if (text) notes.push(() => note(g, text, x, lines.length > 1 ? top + size * 1.6 : py(at(lead)), size, w));
-      if (i === plots.length - 1) notes.push(() => note(g, `${(fixed ? lead.t[k] : lead.t[k] - lead.t[from]).toFixed(2)} ${item.xUnit || 's'}`, x, bottom + size * 1.9, size, w - g.measureText(item.x).width - size * 0.8));
+      for (const one of shown) { g.beginPath(); g.arc(x, py(at(one)), 3.5, 0, Math.PI * 2); g.fill(); }
+      const text = shown.map((one) => { const value = one.trace.read(at(one)); return value && `${one.name ? `${one.name} ` : ''}${value}`; }).filter(Boolean).join('   ');
+      if (text) notes.push(() => note(g, text, x, lines.length > 1 ? top + size * 1.6 : py(at(shown[0])), size, w));
+      if (i === plots.length - 1) notes.push(() => note(g, `${(fixed ? place : place - here.trace.t[from]).toFixed(2)} ${item.xUnit || 's'}`, x, bottom + size * 1.9, size, w - g.measureText(item.x).width - size * 0.8));
     });
     for (const write of notes) write();            // the writing goes on top of every plot
     g.fillStyle = INK; g.textAlign = 'right'; g.fillText(item.x, w - 2, h - size * 0.75);

@@ -214,10 +214,12 @@ export default {
       for (let t = Math.max(0, run.t - 16); t < run.t - 1e-9; t += 1 / 60) sample(t);
       sample(run.t);
     }
-    // a line of the table, unless it is the line last written (same(above): it takes the place of that line); gives the line that stands there
-    function write(table, row, same) {
+    // a line of the table, unless the line last written reads the same in the columns on show in this mode
+    // (same(above): it takes the place of that line); gives the line that stands there
+    function write(id, row, same) {
+      const table = ctx.tables[id], columns = ctx.spec.menus.inquiry.find((item) => item.id === id).columns;
       const rows = table.rows, above = rows[rows.length - 1];
-      if (above && above.every((cell, i) => cell === row[i])) return above;
+      if (above && above.every((cell, i) => cell === row[i] || (columns[i].advanced && !ctx.advanced))) return above;
       table.add(row, Boolean(above) && same(above));
       return row;
     }
@@ -226,7 +228,7 @@ export default {
       const v = ctx.values, end = endTime();
       let top = 0;
       for (let t = 0; t <= end; t += 1 / 480) { const y = total(v.spot, t); if (Math.abs(y) > Math.abs(top) + 1e-6) top = y; }
-      write(ctx.tables.table, [String(v.ampA), String(v.ampB), v.ampA > 0 && v.ampB > 0 ? (v.dir === 'same' ? '같은 방향' : '반대 방향') : '–', v.spot.toFixed(2), signed(top)], () => false);
+      write('table', [String(v.ampA), String(v.ampB), v.ampA > 0 && v.ampB > 0 ? (v.dir === 'same' ? '같은 방향' : '반대 방향') : '–', v.spot.toFixed(2), signed(top)], () => false);
     }
     // the steady wave was stopped: its wavelength and speed, and how far the point that is watched swung in the last period
     function noteSteady() {
@@ -234,7 +236,7 @@ export default {
       let top = 0;
       for (let t = Math.max(0, run.t - period); t <= run.t; t += period / 240) top = Math.max(top, Math.abs(total(v.spot, t)));
       const row = [String(v.ampA), v.both ? String(v.ampB) : '–', v.both && v.ampA > 0 && v.ampB > 0 ? (v.dir === 'same' ? '같은 방향' : '반대 방향') : '–', v.freq.toFixed(2), (SPEED / v.freq).toFixed(2), SPEED.toFixed(1), v.spot.toFixed(2), top.toFixed(1)];
-      run.wrote = write(ctx.tables.table2, row, (above) => above === run.wrote && above[6] === row[6]);   // the same wave at the same point, stopped again: its line is written anew
+      run.wrote = write('table2', row, (above) => above === run.wrote && above[6] === row[6]);   // the same wave at the same point, stopped again: its line is written anew
     }
     function note() { fresh = false; if (isSteady()) { if (run.t > 0) noteSteady(); } else if (run.state === 'done') noteOnce(); }
     function toStart() {
@@ -382,6 +384,7 @@ export default {
     // the two ways, times the square of sin β / β for one slit.
     const XS = -3.4, BY = 1.3, RAIL = 5, CARD = 0.5, MODEL = 8, GEAR = 8, SHOW = 0.1, SLOT = 0.04, REACH = 24, LASER = -6.0;
     const white = () => ctx.values.color === 'white';
+    const lightHeld = () => ctx.locked.has('color') || (ctx.values.color === 'custom' && ctx.locked.has('wave'));   // pressing the laser may not give other light: the colour is locked, or the wavelength set by hand is
     const wide = () => (ctx.values.fronts && !white() ? MODEL : CARD);   // units to a mm, for the slits as they are drawn now
     const rig2 = new T.Group(); world.add(rig2);
     add(rig2, box(12.4, 0.12, 0.5), M.steel, -1.1, 0.06, 0);
@@ -456,6 +459,7 @@ export default {
     // tried2: likewise, how far the screen was (advanced). White light (advanced) is many wavelengths at once: it has no
     // one wavelength, and the models are not drawn for it.
     const run2 = { t: 0 }, tried = { key: '', at: new Map() }, tried2 = { key: '', at: new Map() };
+    let settling = false;   // the values are being put back one by one: what stands between was never shown, and is not kept
     function light() {   // the light as it is now: its name, its wavelength (nm) and its colour
       const v = ctx.values, nm = v.color === 'custom' ? v.wave : white() ? 550 : LIGHT[v.color].nm;
       return white() ? { name: '백색광', nm, rgb: [255, 255, 255] } : { name: v.color === 'custom' ? named(nm) : LIGHT[v.color].name, nm, rgb: hue(nm) };
@@ -476,6 +480,8 @@ export default {
       const waves = lag(x) / lambda(), to = x - (waves - Math.round(2 * waves) / 2) * fringe();
       return Math.abs(to - x) <= 0.051 ? to : x;
     }
+    // where P is, written the same beside the hand and in the list of values: to a hundredth where it stands at the middle of a band, off the step of the menu
+    const placed = () => { const at = pointAt(); return `O에서 ${Math.abs(at - ctx.values.point) < 1e-9 ? milli(at) : `${at > 0 ? '' : '−'}${Math.abs(at).toFixed(2)}`} mm`; };
     // the face of the screen, dark as in the textbook's figures: the light as it falls on it (dim bands are drawn brighter than they are, as the eye sees them), and the rule
     function paint() {
       const ink = light().rgb, w = FACE.w * FACE.px, paper = [24, 26, 34], TALL = 70, top = FACE.row - TALL;
@@ -523,61 +529,63 @@ export default {
     }
     function noteSlit() {
       fresh = false;
-      write(ctx.tables.table3, [light().name, white() ? '–' : String(light().nm), ctx.values.slits.toFixed(2), (far() / 1000).toFixed(1), white() ? '–' : fringe().toFixed(2)], () => false);
+      write('table3', [light().name, white() ? '–' : String(light().nm), ctx.values.slits.toFixed(2), (far() / 1000).toFixed(1), white() ? '–' : fringe().toFixed(2)], () => false);
     }
     function toStartSlit() {
       run2.t = 0;
-      for (const [key, value] of [['color', 'green'], ['wave', 530], ['slits', 0.1], ['far', 1], ['point', 0]]) if (!ctx.locked.has(key) && ctx.values[key] !== value) ctx.set(key, value);
+      const back = [['color', 'green'], ['wave', 530], ['slits', 0.1], ['far', 1], ['point', 0]].filter(([key, value]) => !ctx.locked.has(key) && ctx.values[key] !== value);
+      settling = true; for (const [key, value] of back) ctx.set(key, value); settling = false;
+      if (back.length) slitScene.changed(back.every(([key]) => key === 'point') ? 'point' : 'all');   // (once, for the values as they stand at last)
       moved = true;
     }
     function advanceSlit(t, dt) { run2.t += dt; }   // (only the models move: the light on the screen stays as it is)
 
     // ---------- handling ----------
     // P is carried along the screen (0.1 mm a step), a half of the card sideways (0.05 mm of the gap a step); the laser is pressed.
-    const wall = new T.Plane(new T.Vector3(1, 0, 0), 0);
-    function across(r, x) {   // how far to the front the pointer is: at the height of the beam or, seen from low down, on the upright plane at x
-      if (Math.abs(r.direction.y) > 0.35) { level.constant = -BY; return r.intersectPlane(level, hit) ? hit.z : null; }
-      wall.constant = -x;
-      return r.intersectPlane(wall, hit) ? hit.z : null;
-    }
-    const upright = new T.Plane(new T.Vector3(0, 0, 1), 0);
-    function along(r) {   // how far along the rail the pointer is: at the height of the screen's foot or, seen from low down, on the upright plane through the rail
-      if (Math.abs(r.direction.y) > 0.35) { level.constant = -0.4; return r.intersectPlane(level, hit) ? hit.x : null; }
-      return r.intersectPlane(upright, hit) ? hit.x : null;
+    // How far along a line the pointer is: the point of that line nearest the line of sight. The line runs along the
+    // rail ('x') or across it ('z'), through the place at which the thing was taken (grab.at). (One rule for every line
+    // of sight, as in P-15: with a level plane for some and an upright one for others, the thing leapt where the
+    // pointer passed from the one to the other.)
+    function slide(r, axis) {
+      const d = r.direction, lean = 1 - d[axis] * d[axis];
+      if (lean < 1e-3) return null;   // (none for someone who looks straight along that line)
+      hit.copy(grab.at); hit[axis] = 0; hit.sub(r.origin);
+      return (d[axis] * hit.dot(d) - hit[axis]) / lean;
     }
     const slitTool = {
       handles: () => (ctx.advanced ? [pointHandle, slots[0].handle, slots[1].handle, laserHandle, screenHandle] : [pointHandle, slots[0].handle, slots[1].handle, laserHandle]),
       start(grip, r) {
         if (grip.kind === 'laser') { grab = { ...grip }; return true; }
+        ray.ray.copy(r);
+        const held = ray.intersectObject(grip.kind === 'screen' ? screenHandle : grip.kind === 'point' ? pointHandle : slots[grip.k].handle, false)[0];
+        if (!held) return false;
+        const at = held.point;
         if (grip.kind === 'screen') {
-          const x = along(r);
-          if (x === null) return false;
           if (ctx.locked.has('far')) { say('잠금', screen.position.x, BY + 1.7, 0, 1.2); return false; }
-          grab = { ...grip, off: screen.position.x - x };
+          grab = { ...grip, at, off: screen.position.x - at.x };
           return true;
         }
-        const key = grip.kind === 'point' ? 'point' : 'slits', x = grip.kind === 'point' ? screen.position.x : XS, z = across(r, x);
-        if (z === null) return false;
+        const key = grip.kind === 'point' ? 'point' : 'slits', x = grip.kind === 'point' ? screen.position.x : XS, z = at.z;
         if (ctx.locked.has(key)) { say('잠금', x, BY + 1, z, 1.2); return false; }
-        grab = { ...grip, x, off: pointAt() * SHOW - z, from: z, gap: ctx.values.slits };
+        grab = { ...grip, at, x, off: pointAt() * SHOW - z, from: z, gap: ctx.values.slits };
         return true;
       },
       move(r) {
         if (grab.kind === 'laser') return;
         if (grab.kind === 'screen') {   // 0.1 m a step
-          const x = along(r);
+          const x = slide(r, 'x');
           if (x === null) return;
           const to = Math.max(0.5, Math.min(1.5, Math.round((x + grab.off - XS) / RAIL * 10) / 10));
           if (to !== ctx.values.far) ctx.set('far', to);
           say(`${to.toFixed(1)} m`, XS + to * RAIL, BY + 1.75, 0);
           return;
         }
-        const z = across(r, grab.x);
+        const z = slide(r, 'z');
         if (z === null) return;
         if (grab.kind === 'point') {
           const to = Math.max(-REACH, Math.min(REACH, Math.round((z + grab.off) / SHOW * 10) / 10));
           if (to !== ctx.values.point) ctx.set('point', to);
-          say(`O에서 ${milli(to)} mm`, grab.x, BY + 0.95, to * SHOW);
+          say(placed(), grab.x, BY + 0.95, to * SHOW);
         } else {
           const to = Math.max(0.1, Math.min(0.3, Math.round((grab.gap + slots[grab.k].side * (z - grab.from) * 2 / GEAR) * 20) / 20));
           if (to !== ctx.values.slits) ctx.set('slits', to);
@@ -587,7 +595,7 @@ export default {
       end(done) {
         if (done.kind !== 'laser') return;
         const turns = ctx.advanced ? ['green', 'red', 'white'] : ['green', 'red'];   // (a wavelength of one's own is set from the menu)
-        if (ctx.locked.has('color')) say('잠금', LASER, BY + 0.9, 0, 1.2); else ctx.set('color', turns[(turns.indexOf(ctx.values.color) + 1) % turns.length]);
+        if (lightHeld()) say('잠금', LASER, BY + 0.9, 0, 1.2); else ctx.set('color', turns[(turns.indexOf(ctx.values.color) + 1) % turns.length]);
       },
     };
 
@@ -629,11 +637,11 @@ export default {
       listLabel2.show(v.numbers);
       if (v.numbers) {
         const size = Math.abs(waves), halves = Math.round(2 * size), sharp = Math.abs(2 * size - halves) < 0.02;
-        const lines = [`<b>P</b> O에서 ${milli(x)} mm`, white() ? `경로차 <b>${Math.round(Math.abs(lag(x)) * 1e6)} nm</b>` : `경로차 <b>${size.toFixed(2)} 파장</b>`];
+        const lines = [`<b>P</b> ${placed()}`, white() ? `경로차 <b>${Math.round(Math.abs(lag(x)) * 1e6)} nm</b>` : `경로차 <b>${size.toFixed(2)} 파장</b>`];
         if (!white()) {
           if (sharp) lines.push(halves === 0 ? '보강 간섭' : halves % 2 ? `반파장의 홀수 배(${halves}배) → 상쇄 간섭` : `반파장의 짝수 배(${halves}배) → 보강 간섭`);
           lines.push(`무늬 간격 <b>${fringe().toFixed(2)} mm</b>`);
-          if (ctx.advanced) lines.push('= 거리 × 파장 ÷ 슬릿 간격', `= ${(far() / 1000).toFixed(1)} m × ${light().nm} nm ÷ ${v.slits.toFixed(2)} mm`);   // (the bright bands are evenly apart where the screen is far off)
+          if (ctx.advanced) lines.push(tall() ? '= 스크린까지의 거리 × 파장<br>÷ 슬릿 사이의 간격' : '= 스크린까지의 거리 × 파장 ÷ 슬릿 사이의 간격', `= ${(far() / 1000).toFixed(1)} m × ${light().nm} nm ÷ ${v.slits.toFixed(2)} mm`);   // (the bright bands are evenly apart where the screen is far off)
         }
         listLabel2.write(lines.join('<br>')); if (tall()) { if (ctx.advanced) listSpot2.set(-7.2, 0.1, 2.05); else listSpot2.set(xs, BY + 2.2, 0); } else if (ctx.advanced) { if (ctx.view.kind === 'fixed' && ctx.view.dir === 'top') listSpot2.set((XS + xs) / 2, 0.3, -2.1); else listSpot2.set(0.2, 0.3, 4.2); } else listSpot2.set(xs + 1.9, BY + 0.6, 1.2);   // (behind the screen; at the front of the bench where the screen may be carried far off (from above: at the back, between the card and the screen); over it on an upright screen)
       }
@@ -646,6 +654,7 @@ export default {
       enter() { rig2.visible = true; run2.t = 0; paint(); curve(); pointMark(); collect(); fresh = true; since = performance.now(); },
       leave() { rig2.visible = false; for (const label of [laserLabel, gapLabel, pointLabel, farLabel, listLabel2, slots[0].label, slots[1].label]) label.show(false); },
       changed(id) {
+        if (settling) return;
         if (id !== 'point') { paint(); curve(); collect(); fresh = true; since = performance.now(); }
         pointMark();
       },
@@ -718,7 +727,7 @@ export default {
     }
     function noteFilm() {
       fresh = false;
-      write(ctx.tables.table4, [light().name, white() ? '–' : String(light().nm), ctx.values.index.toFixed(2), String(ctx.values.thick), (100 * backNow(ctx.values.thick)).toFixed(2)], () => false);
+      write('table4', [light().name, white() ? '–' : String(light().nm), ctx.values.index.toFixed(2), String(ctx.values.thick), (100 * backNow(ctx.values.thick)).toFixed(2)], () => false);
     }
     function toStartFilm() {
       run3.t = 0;
@@ -755,7 +764,7 @@ export default {
       end(done) {
         if (done.kind !== 'laser') return;
         const turns = ['green', 'red', 'white'];
-        if (ctx.locked.has('color')) say('잠금', 0, LAMP.y + 1.2, LAMP.z, 1.2); else ctx.set('color', turns[(turns.indexOf(ctx.values.color) + 1) % turns.length]);
+        if (lightHeld()) say('잠금', 0, LAMP.y + 1.2, LAMP.z, 1.2); else ctx.set('color', turns[(turns.indexOf(ctx.values.color) + 1) % turns.length]);
       },
     };
 
@@ -800,12 +809,12 @@ export default {
       });
       // the writing
       lampLabel.write(white() ? '<b>백색광</b>' : `${light().name} <b>${light().nm} nm</b>`); lampLabel.show(true);
-      backSpot.set(0, top + long * COS + 0.45, (za + zc) / 2 + long * SIN); backLabel.write(`반사 <b>${(100 * backNow(v.thick)).toFixed(2)} %</b>${dot}`); backLabel.show(true);
+      backSpot.set(0, top + long * COS + 0.45, (za + zc) / 2 + long * SIN); backLabel.write(`반사율 <b>${(100 * backNow(v.thick)).toFixed(2)} %</b>${dot}`); backLabel.show(true);
       thickSpot.set(0, top + 0.1, tall() ? 2.3 : 3.55); thickLabel.write(v.thick ? `막의 두께 <b>${v.thick} nm</b>` : '막 없음'); thickLabel.show(true);
       glassLabel.write('유리'); glassLabel.show(true);
       listLabel3.show(v.numbers);
       if (v.numbers) {
-        const lines = [`투과 <b>${(100 - 100 * backNow(v.thick)).toFixed(2)} %</b>`];
+        const lines = [`투과율 <b>${(100 - 100 * backNow(v.thick)).toFixed(2)} %</b>`];
         if (!white()) {
           const inside = light().nm / n, trips = 2 * v.thick / inside, halves = Math.round(2 * trips);
           lines.push(`막 속 파장 <b>${inside.toFixed(0)} nm</b>`);

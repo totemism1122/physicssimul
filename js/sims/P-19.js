@@ -10,7 +10,7 @@
 // (by γ = 1 ÷ √(1 − v²/c²)); and the other side is shorter along its motion (by 1 ÷ γ).
 // Light is drawn slow, C lengths (30 cm) a second, so that a clock at rest ticks once a second and the clock
 // by the play button is the observer's own time. What moves off one end of the stage comes in at the other.
-// The rod and the ship: a rod lies at rest on the ground, as long at rest as the ship (ROD). A needle hangs under
+// The rod and the ship: a rod lies at rest on the ground, as long at rest as the ship's hull (ROD). A needle hangs under
 // the ship. Event A: the needle is over the rod's left end; event B: over its right end. The chosen observer's
 // stopwatch runs from A to B, and the rod's length is the speed times that time: for the observer on the ground
 // the ship takes ROD ÷ v; for the one in the ship the rod (moving, and shorter by 1 ÷ γ) takes ROD ÷ γv.
@@ -23,8 +23,8 @@
 // tail is in, and opens both at once the moment the nose is at the way out: the ship is shut in, and is not
 // struck. (Slower than 0.6c it does not fit, and the doors are left open. At 0.6c it just fits: the doors are
 // shut and opened at the same moment. A door shut for less than SEEN_FOR is kept in sight: when it is opened the
-// scene stands still, the clock with it, for the rest of that time, the door still down.) For the observer in the ship the
-// barn is the shorter, and the same shuttings are not at once: the door of the way out is shut first, by
+// scene stands still, the clock with it, for the rest of that time, the door still down.) For the observer in the
+// ship the barn is the shorter, and the same shuttings are not at once: the door of the way out is shut first, by
 // γ × v × BARN ÷ c², and opened as the nose comes to it; the door of the way in is shut only when the tail is
 // in. The two doors are never shut together for that observer. In this scene the speed is no more than 0.9c:
 // faster, the barn would be off the stage at one of the two shuttings as the observer in the ship finds them.
@@ -42,7 +42,7 @@
 const L = 1.5, C = 3, TICK = 2 * L / C;   // the mirrors of a clock are this far apart (15 cm); how far light goes in a second (30 cm); a round trip of the light in a clock at rest (1 s)
 const BETA_MAX = 0.9, DEEP = 0.99, DOTS = 48;   // the most the speed can be (of c), and in the advanced mode; how many dots the light leaves in a second
 const most = (advanced) => (advanced ? DEEP : BETA_MAX), grain = (advanced) => (advanced ? 0.01 : 0.05);   // the speed's range and step in each mode
-const ROD = 3.6, LEAD = 1.2;   // the rod at rest (36 cm); how far before the rod a pass begins, and how far after it it ends
+const ROD = 3.6, LEAD = 1.2;   // the rod at rest (36 cm); how far before the rod (or the barn) a pass begins, and how far after it it ends
 const SEEN_FOR = 0.3;   // (the barn scene) the least time, of the watching, that a shut door is seen shut
 const SHIP = 5, NOSE = 2.8, BARN = 4;   // the ship from tail to nose (50 cm), and how far its nose is ahead of its middle; the barn at rest (40 cm)
 const onRod = (v) => v.scene === 'rod', onBarn = (v) => v.scene === 'barn', onClock = (v) => !onRod(v) && !onBarn(v);
@@ -86,10 +86,10 @@ export default {
     inquiry: [
       { id: 'table', label: '기록 표', kind: 'table', rows: 8, wide: true, when: onClock, text: '움직이는 시계의 빛이 한 번 왕복하면, 그동안 두 시계가 센 시간이 적힙니다.',
         columns: [{ label: '관찰자' }, { label: '움직이는 쪽의<br>속력', unit: 'c' }, { label: '움직이는 시계가<br>센 시간', unit: 's' }, { label: '관찰자의 시계로<br>잰 시간', unit: 's', result: true }] },
-      { id: 'table3', label: '기록 표', kind: 'table', rows: 8, wide: true, when: onBarn, text: '고른 관찰자에게 두 문이 닫힌 시각이 적힙니다(재생을 시작한 때부터).',
-        columns: [{ label: '관찰자' }, { label: '움직이는 쪽의<br>속력', unit: 'c' }, { label: '입구가 닫힌<br>시각', unit: 's' }, { label: '출구가 닫힌<br>시각', unit: 's' }, { label: '먼저<br>닫힌 문', result: true }] },
       { id: 'table2', label: '기록 표', kind: 'table', rows: 8, wide: true, when: onRod, text: '우주선의 바늘이 막대의 왼쪽 끝을 지날 때(A)부터 오른쪽 끝을 지날 때(B)까지, 고른 관찰자가 잰 시간이 적힙니다.',
         columns: [{ label: '관찰자' }, { label: '움직이는 쪽의<br>속력', unit: 'c' }, { label: 'A에서 B까지<br>잰 시간', unit: 's' }, { label: '속력 × 시간<br>(막대의 길이)', unit: 'cm', result: true }] },
+      { id: 'table3', label: '기록 표', kind: 'table', rows: 8, wide: true, when: onBarn, text: '고른 관찰자에게 두 문이 닫힌 시각이 적힙니다(재생을 시작한 때부터).',
+        columns: [{ label: '관찰자' }, { label: '움직이는 쪽의<br>속력', unit: 'c' }, { label: '입구가 닫힌<br>시각', unit: 's' }, { label: '출구가 닫힌<br>시각', unit: 's' }, { label: '먼저<br>닫힌 문', result: true }] },
     ],
   },
 
@@ -368,7 +368,7 @@ export default {
     });
 
     function draw() {
-      const v = ctx.values, up = tall(), h = half(), beta = v.speed, g = gamma(beta), mover = moving(), size = up ? 0.7 : 1, rodded = onRod(v), barned = onBarn(v), plain = !rodded && !barned;
+      const v = ctx.values, up = tall(), h = half(), beta = v.speed, g = gamma(beta), mover = moving(), size = up ? 0.7 : 1, rodded = onRod(v), barned = onBarn(v), plain = !rodded && !barned, still = v.observer;
       rig.scale.setScalar(size);
       for (const one of clocks) one.visible = plain;
       lights.ground.visible = lights.ship.visible = dots.visible = plain; rodGroup.visible = needle.visible = rodded; barn.visible = barned;
@@ -391,25 +391,30 @@ export default {
       ground.position.x = at.ground; ground.scale.x = mover === 'ground' ? 1 / g : 1;
       onGround.ring.visible = v.observer === 'ground'; inShip.ring.visible = v.observer === 'ship';
       // the light of the two clocks, and its dots: the clock at rest by the observer's time, the other by its own
-      const foot = { ground: TOP + Y0, ship: SHIP_Y + Y0 }, still = v.observer;
-      lights[still].position.set(at[still], foot[still] + climb(state.mine), Z); lights[mover].position.set(at[mover], foot[mover] + climb(state.own), Z);
-      let n = 0;
-      const put = (x, y) => { spot.position.set(x, y, Z); spot.updateMatrix(); dots.setMatrixAt(n++, spot.matrix); };
-      for (let k = 0; k <= DOTS * TICK / 2; k++) put(at[still], foot[still] + climb(k / DOTS));
-      if (plain) for (const one of state.trail) put(wrap(home[mover] + one.x), foot[mover] + climb(one.own));
-      dots.count = n; dots.instanceMatrix.needsUpdate = true;
+      if (plain) {
+        const foot = { ground: TOP + Y0, ship: SHIP_Y + Y0 };
+        lights[still].position.set(at[still], foot[still] + climb(state.mine), Z); lights[mover].position.set(at[mover], foot[mover] + climb(state.own), Z);
+        let n = 0;
+        const put = (x, y) => { spot.position.set(x, y, Z); spot.updateMatrix(); dots.setMatrixAt(n++, spot.matrix); };
+        for (let k = 0; k <= DOTS * TICK / 2; k++) put(at[still], foot[still] + climb(k / DOTS));
+        for (const one of state.trail) put(wrap(home[mover] + one.x), foot[mover] + climb(one.own));
+        dots.count = n; dots.instanceMatrix.needsUpdate = true;
+      }
       arm.rotation.z = 0.9 - 1.8 * beta / fastest();
       // the writing
-      const time = { [still]: state.mine, [mover]: state.own };
-      // (the ground clock's: beside it, under where the ship passes; on a tall screen it and the lever's hang below what they name)
-      const keep = (x) => (up ? Math.max(-1.9, Math.min(1.9, x)) : x);   // (on a tall screen a clock's writing stays on screen when the clock is at an end of the stage)
-      if (up) onRig(keep(at.ground), 0, Z + 0.9, spots.ground); else onRig(Math.max(-6, at.ground - 1.9), TOP + 0.45, Z, spots.ground);
-      onRig(keep(at.ship), SHIP_Y + HULL.high + 0.25, Z, spots.ship); labels.ground.shift = labels.lever.shift = up ? -0.12 : 0;
+      labels.ground.shift = labels.lever.shift = up ? -0.12 : 0;
+      if (plain) {   // (the clock scene) what each clock has counted, and how many round trips of its light that is
+        const time = { [still]: state.mine, [mover]: state.own };
+        // (the ground clock's: beside it, under where the ship passes; on a tall screen it and the lever's hang below what they name)
+        const keep = (x) => (up ? Math.max(-1.9, Math.min(1.9, x)) : x);   // (on a tall screen a clock's writing stays on screen when the clock is at an end of the stage)
+        if (up) onRig(keep(at.ground), 0, Z + 0.9, spots.ground); else onRig(Math.max(-6, at.ground - 1.9), TOP + 0.45, Z, spots.ground);
+        onRig(keep(at.ship), SHIP_Y + HULL.high + 0.25, Z, spots.ship);
+        for (const id of ['ground', 'ship']) labels[id].write(`${WHO[id]}의 시계 <b>${time[id].toFixed(2)} s</b> · 왕복 ${Math.floor(time[id] / TICK + 1e-9)}번`);
+      }
       if (plain) onRig(at[still] + stand[still], (still === 'ground' ? TOP : SHIP_Y) + 0.95, Z, spots.who);
       else if (still === 'ship') onRig(at.ship, shipY + HULL.high + 0.25, Z, spots.who);
       else if (barned) onRig(at.ground, TOP + HIGH + 1.15, Z, spots.who); else onRig(at.ground, TOP + 1.15, Z - 0.45, spots.who);
       if (up) onRig(LEVER.x, 0, LEVER.z + 0.6, spots.lever); else onRig(LEVER.x - 1.9, 0.2, LEVER.z, spots.lever);
-      for (const id of ['ground', 'ship']) labels[id].write(`${WHO[id]}의 시계 <b>${time[id].toFixed(2)} s</b> · 왕복 ${Math.floor(time[id] / TICK + 1e-9)}번`);
       // (the rod scene) the two events by their letters, gold once they have happened; the observer's stopwatch, which runs from A to B
       // (the barn scene) each door is down while it is shut
       const moves = barned && beta > 0, seen = rodded && beta > 0 ? [state.mine >= run.a, state.mine >= run.b] : [false, false];
@@ -425,7 +430,7 @@ export default {
       labels.who.write(rodded ? `<b>관찰자</b>의 초시계 <b>${watch.toFixed(2)} s</b>` : '<b>관찰자</b>'); labels.lever.write(`${WHO[mover]}의 속력 <b>${beta.toFixed(2)}c</b>`);
       // (advanced) the rule, with the values in it: on a wide screen by itself at the front left, on a tall one under the list
       const rule = !ctx.advanced || barned ? [] : rodded
-        ? ['움직이는 물체의 길이(L) = 고유 길이(L<sub>고유</sub>) × √(1 − v²/c²)', `${mover === 'ship' ? '우주선' : '막대'}의 길이 <b>${(ROD * 10 / g).toFixed(1)} cm</b> = ${(ROD * 10).toFixed(1)} cm × √(1 − ${beta.toFixed(2)}²)`]
+        ? ['움직이는 물체의 길이(L) = 고유 길이(L<sub>고유</sub>) × √(1 − v²/c²)', `${mover === 'ship' ? '우주선 몸통' : '막대'}의 길이 <b>${(ROD * 10 / g).toFixed(1)} cm</b> = ${(ROD * 10).toFixed(1)} cm × √(1 − ${beta.toFixed(2)}²)`]
         : ['관찰자가 잰 시간(Δt) = 고유 시간(Δt<sub>고유</sub>) ÷ √(1 − v²/c²)', `<b>${(TICK * g).toFixed(2)} s</b> = ${TICK.toFixed(2)} s ÷ √(1 − ${beta.toFixed(2)}²)`];
       labels.rule.write(rule.join('<br>')); onRig(-4.7, 0, 3.4, spots.rule);
       for (const key of Object.keys(labels)) labels[key].show(key === 'list' ? v.numbers : key === 'rule' ? v.numbers && !up && rule.length > 0 : key === 'a' || key === 'b' ? !plain : key === 'ground' || key === 'ship' ? plain : true);
@@ -461,7 +466,7 @@ export default {
     ctx.on('play', (on) => {
       running = on; moved = true;
       if (!on || !passing()) return;
-      // (the rod scene) nothing passes at no speed; a pass that is over is begun again
+      // (a scene of one pass) nothing passes at no speed; a pass that is over is begun again
       if (!ctx.values.speed) { onRig(LEVER.x, 1.6, LEVER.z, way); say('속력을 올려 보세요', way.x, way.y, way.z, 1.8); stopSoon = true; } else if (state.done) { restart(); ctx.seek(0); }
     });
     ctx.on('tick', (t, dt) => { if (!dt) return; advance(dt); moved = true; });
@@ -470,7 +475,7 @@ export default {
     ctx.on('change', (id) => {
       moved = true;
       if (id === 'observer') { restart(); ctx.seek(0); ctx.setPlaying(false); }   // the same thing as the other observer measures it: at its start, standing still
-      if (id === 'speed' && passing()) { restart(); if (!quiet) { ctx.seek(0); if (ctx.values.speed) ctx.setPlaying(true); } }   // (the rod scene: the pass over again at the new speed)
+      if (id === 'speed' && passing()) { restart(); ctx.seek(0); if (!quiet && ctx.values.speed) ctx.setPlaying(true); }   // (a scene of one pass: the pass over again at the new speed, the clock by the play button from nought too)
       else if (id === 'speed') { state.clean = false; if (!quiet && !running) ctx.setPlaying(true); }   // (what is changed is shown at once, without the play button)
       if (id === 'scene') {   // the other scene from its start, standing still (the rod scene with a speed, so that the play button has something to show)
         restart(); quiet = true;
