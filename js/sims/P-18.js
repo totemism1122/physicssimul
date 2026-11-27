@@ -2,13 +2,19 @@
 //
 // Bands: atoms of a material gather on a plate, one after another (as the dots gather on the screen of the double
 // slit in P-16). A board behind shows the two outermost energy levels of their electrons: with one atom two lines,
-// with N atoms each split into N lines (the lower N of all the lines hold the electrons, two to a line), and as the
-// plate fills the lines crowd into two bands. In copper the two bands lie one over the other, so that empty levels
-// are right above the filled ones; in silicon a small gap parts them, in diamond a large one. When the plate is
-// full, the two rods of a tester (a battery and a lamp, after the textbook's activity) touch it: the lamp lights
-// if current flows.
-// The lines are drawn where the levels of a row of N atoms lie (E0 − 2t cos(kπ ÷ (N + 1)), k = 1 … N): where the
-// bands lie and how wide they are is a rough drawing, only the gap between them is the measured one.
+// with N atoms each split into N lines (the electrons of all the atoms fill them from the lowest, two to a line), and
+// as the plate fills the lines crowd into two bands. A metal conducts in either of two ways, as the textbook says:
+// copper has one outer electron to an atom, so that its lower band is only partly filled (the upper band is drawn
+// just touching it); magnesium has two, which would fill the lower band, but the two bands lie one over the other,
+// so that the electrons fill both up to one height. Either way empty levels are right above the filled ones. In
+// silicon and diamond two electrons to an atom fill the lower band, and a small gap parts it from the upper one in
+// silicon, a large one in diamond. When the plate is full, the two rods of a tester (a battery and a lamp, after the
+// textbook's activity) touch it: the lamp lights if current flows.
+// How wide a band of N atoms is comes from a row of N atoms (its levels reach E0 ± 2t cos(π ÷ (N + 1))); within it
+// the N levels are spaced evenly. (In the row they crowd at the edges of the band, which a solid does not: there the
+// levels are fewest at the edges. Crowded lines were seen as a bright stripe, like a level of its own.) With 1, 2 or
+// 3 atoms the levels are those of the row. Where the bands lie and how wide they are is a rough drawing, only the
+// gap between them is the measured one.
 //
 // Doping: a crystal of silicon drawn flat, as the textbook draws it (each atom shares two electrons with each of its
 // four neighbours). An atom of phosphorus or of boron is carried to a place in the crystal. Phosphorus has an
@@ -29,11 +35,15 @@
 const FULL = '#7fb2e6', BARE = '#f0c987';   // (as the textbook draws them: what is filled blue, what is empty yellow)
 const KB = 8.617e-5, CHARGE = 1.602e-19;   // Boltzmann's constant (eV/K); the charge of an electron (C)
 // the materials: what they are, the gap between the bands (eV), the two levels of one atom (eV, on the board) and
-// how far each spreads either way (2 × reach) in the solid, how easily the electrons and holes move (m²/V s)
+// how far each spreads either way (2 × reach) in the solid, its outer electrons to an atom; a metal: why it conducts
+// (part: its band is partly filled, over: two bands overlap), what it resists at 293 K (Ω m) and how much more for
+// each kelvin (of that), the highest temperature it is brought to (K: magnesium melts at 923 K), whether its line on
+// the graph is broken (dashed: it lies nearly on copper's). mark: its symbol, which names its line on the graph (as the textbook's graph does: the names would not fit); a semiconductor or insulator: how easily the electrons and holes move (m²/V s)
 const STUFF = {
-  copper: { name: '구리', kind: '도체', gap: 0, at: [3, 6], reach: [1.0, 1.2], tint: 0xc8824a },
-  silicon: { name: '규소', kind: '반도체', gap: 1.11, at: [3, 6.51], reach: [0.6, 0.6], tint: 0x8d9bb5, mobile: 0.183 },
-  diamond: { name: '다이아몬드', kind: '부도체', gap: 5.5, at: [2, 9.1], reach: [0.4, 0.4], tint: 0xd6ecf2, mobile: 0.4 },
+  copper: { name: '구리', mark: 'Cu', kind: '도체', gap: 0, at: [3, 7.4], reach: [1.0, 1.2], outer: 1, why: 'part', rho: [1.68e-8, 0.0039], tint: 0xc8824a },
+  magnesium: { name: '마그네슘', mark: 'Mg', kind: '도체', gap: 0, at: [3, 6], reach: [1.0, 1.2], outer: 2, why: 'over', rho: [4.39e-8, 0.0038], most: 900, melt: 923, dashed: true, tint: 0xc3c6cd },
+  silicon: { name: '규소', mark: 'Si', kind: '반도체', gap: 1.11, at: [3, 6.51], reach: [0.6, 0.6], outer: 2, tint: 0x8d9bb5, mobile: 0.183 },
+  diamond: { name: '다이아몬드', mark: 'C', kind: '부도체', gap: 5.5, at: [2, 9.1], reach: [0.4, 0.4], outer: 2, tint: 0xd6ecf2, mobile: 0.4 },
 };
 // (doping) what is put into the silicon: its name and sign, what the silicon is then called, how many outer electrons it has and what it leaves
 const DOPANTS = {
@@ -43,17 +53,22 @@ const DOPANTS = {
 };
 const onBand = (v) => v.scene === 'band', onDope = (v) => v.scene === 'dope', onLed = (v) => v.scene === 'led';   // which arrangement an item of a menu belongs to
 const COLS = 24, ROWS = 15, MOST = COLS * ROWS, PACE = { slow: 2, mid: 20, fast: 100 };   // the places on the plate; atoms a second
-// the levels of n atoms of a material, from the lowest: each with its energy, and whether electrons fill it
+// the levels of n atoms of a material, from the lowest: each with its energy, the band it is in (0 the lower), how many
+// electrons it holds (0, 1 or 2), and whether it holds any. The electrons of all the atoms fill them from the lowest, whichever band they are in
 function levelsOf(id, n) {
   const stuff = STUFF[id], all = [];
-  stuff.at.forEach((mid, band) => { for (let k = 1; k <= n; k++) all.push(mid - 2 * stuff.reach[band] * Math.cos(k * Math.PI / (n + 1))); });
-  return all.sort((a, b) => a - b).map((e, k) => ({ e, full: k < n }));
+  stuff.at.forEach((mid, band) => {
+    const half = 2 * stuff.reach[band] * Math.cos(Math.PI / (n + 1));   // (half the width, as in a row of n atoms)
+    for (let k = 1; k <= n; k++) all.push({ e: n === 1 ? mid : mid + half * (2 * k - n - 1) / (n - 1), band });   // (evenly within it)
+  });
+  let left = stuff.outer * n;
+  return all.sort((a, b) => a.e - b.e).map(({ e, band }) => { const held = Math.min(2, left); left -= held; return { e, band, held, full: held > 0 }; });
 }
 // how many electrons of a m³ the heat has lifted over the gap, at the temperature T (K)
 const lifted = (id, T) => 5.2e21 * T ** 1.5 * Math.exp(-STUFF[id].gap / (2 * KB * T));
 // how much a metre cube of it resists a current (Ω m) at the temperature T (K)
 function resist(id, T) {
-  if (id === 'copper') return Math.max(2e-10, 1.68e-8 * (1 + 0.0039 * (T - 293)));   // (it grows with the temperature, as the atoms shake more)
+  if (STUFF[id].rho) { const [warm, rise] = STUFF[id].rho; return Math.max(2e-10, warm * (1 + rise * (T - 293))); }   // (a metal: it grows with the temperature, as the atoms shake more)
   return Math.min(1e14, 1 / (CHARGE * lifted(id, T) * STUFF[id].mobile * (T / 300) ** -2.2));   // (no real insulator resists more than some 10^14: what is mixed in it carries a little)
 }
 // (the diode) the light-emitting diodes: the wavelength of their light (nm) and the least voltage at which they light
@@ -89,14 +104,15 @@ function flow(id, volt, lit = 0, n = 10) {
   return (lo + hi) / 2;
 }
 const plain = (value) => { if (!(value > 0)) return '0'; const n = Math.floor(Math.log10(value)); return `${(value / 10 ** n).toFixed(1)}×10${[...String(n)].map((c) => '¯⁰¹²³⁴⁵⁶⁷⁸⁹'['-0123456789'.indexOf(c)]).join('')}`; };   // a number as power() below writes it, but without marks (¯ for the raised minus, which the Korean face draws a whole square wide): for the graph
-const TEMPS = Array.from({ length: 41 }, (_, k) => 200 + 20 * k), INKS = { copper: '#e39a6c', silicon: '#7fb2e6', diamond: '#8fd19e' };   // (advanced) the temperatures of the graph (K) and the colours of its lines
+const TEMPS = Array.from({ length: 41 }, (_, k) => 200 + 20 * k), INKS = { copper: '#e39a6c', magnesium: '#c59be8', silicon: '#7fb2e6', diamond: '#8fd19e' };   // (advanced) the temperatures of the graph (K) and the colours of its lines
 const READ = { stuff: '' };   // (the material on the plate: the one whose value is written where the graph is pressed)
 const COLD = 200, HOT = 1000, ROOM = 300;   // (advanced) the temperatures the plate can be brought to (K), and that of the room
+const topOf = (id) => STUFF[id].most || HOT;   // (the highest for a material: below where it melts)
 const power = (value) => { const n = Math.floor(Math.log10(value)); return `${(value / 10 ** n).toFixed(1)} ×10<sup>${String(n).replace('-', '−')}</sup>`; };   // a number as it is written
 
 export default {
   // what is taken for granted, written on screen by the frame
-  premise: (v, advanced) => (onLed(v) ? (v.led === 'pd' ? '전자와 양공은 실제보다 훨씬 크고 느리며 수도 적게 그렸습니다. 광 다이오드에는 빛의 세기 100 %에서 4 mA가 흐른다고 두었습니다' : '전자와 양공은 실제보다 훨씬 크고 느리며 수도 적게 그렸습니다. 적외선은 눈에 보이지 않지만 흐린 붉은빛으로 그렸습니다') + (advanced ? '. 다이오드 자체의 저항은 도핑 농도에 반비례하고, 접합면의 전위 장벽은 작동 전압보다 0.3 V 높다고 두었습니다' : '. 다이오드 자체에도 저항(30 Ω)이 있다고 두었습니다') : onDope(v) ? '공유 결합을 평면에 펴서 그렸습니다. 전자와 양공은 실제보다 훨씬 크고 느리게 그렸습니다(제멋대로인 움직임은 실제로는 한쪽으로 쏠리는 이동보다 훨씬 빠름). 불순물은 실제로는 규소 원자 수백만 개에 하나쯤입니다' + (advanced ? '. 열로 생긴 전자와 양공의 쌍은 수가 100배가 될 때마다 1쌍씩 그렸습니다' : '') : `가장 바깥의 두 준위만 그렸습니다. 준위의 위치는 원자가 한 줄로 이어졌을 때의 식으로 어림한 것이고, 띠 간격만 실제 값입니다${advanced ? '. 전도띠로 올라간 전자는 수가 10배가 될 때마다 점 2개씩 늘려 그렸습니다' : ''}`),
+  premise: (v, advanced) => (onLed(v) ? (v.led === 'pd' ? '전자와 양공은 실제보다 훨씬 크고 느리며 수도 적게 그렸습니다. 광 다이오드에는 빛의 세기 100 %에서 4 mA가 흐른다고 두었습니다' : '전자와 양공은 실제보다 훨씬 크고 느리며 수도 적게 그렸습니다. 적외선은 눈에 보이지 않지만 흐린 붉은빛으로 그렸습니다') + (advanced ? '. 다이오드 자체의 저항은 도핑 농도에 반비례하고, 접합면의 전위 장벽은 작동 전압보다 0.3 V 높다고 두었습니다' : '. 다이오드 자체에도 저항(30 Ω)이 있다고 두었습니다') : onDope(v) ? '공유 결합을 평면에 펴서 그렸습니다. 전자와 양공은 실제보다 훨씬 크고 느리게 그렸습니다(제멋대로인 움직임은 실제로는 한쪽으로 쏠리는 이동보다 훨씬 빠름). 불순물은 실제로는 규소 원자 수백만 개에 하나쯤입니다' + (advanced ? '. 열로 생긴 전자와 양공의 쌍은 수가 100배가 될 때마다 1쌍씩 그렸습니다' : '') : `가장 바깥의 두 준위만 그렸습니다. 띠의 너비는 원자가 한 줄로 이어졌을 때의 식으로 어림하고 띠 안의 준위는 고르게 놓았으며, 띠 간격만 실제 값입니다${advanced ? '. 전도띠로 올라간 전자는 수가 10배가 될 때마다 점 2개씩 늘려 그렸습니다' : ''}`),
   fixedViews: ['front'],
   camera: { target: [0.2, 2.9, 0], r: 16.5, theta: 0, phi: 1.3, rMax: 40 },
   // (the diode) not against time: the least voltage of the supply at which each diode has been seen alight (V), against
@@ -107,7 +123,9 @@ export default {
   // the axis runs from 10^-10 to 10^16. Every line has a place for each of TEMPS, empty (NaN) where the plate has not been
   traces: {
     ...Object.fromEntries(['0', ...Object.keys(LEDS)].map((id) => [`v${id}`, { range: 3, read: (volt) => (Number.isFinite(volt) ? `${volt.toFixed(2)} V` : '') }])),
-    ...Object.fromEntries([...Object.keys(STUFF), 'now'].map((id) => [`r${id}`, { window: 1e6, range: 26, read: (value) => (id === READ.stuff && Number.isFinite(value) ? `${plain(10 ** (value - 10))} Ω·m` : '') }])),
+    ...Object.fromEntries([...Object.keys(STUFF), 'now'].map((id) => [`r${id}`, { window: 1e6, range: 26, read: (value) => (id === READ.stuff && !(STUFF[id] && STUFF[id].dashed) && Number.isFinite(value) ? `${plain(10 ** (value - 10))} Ω·m` : '') }])),
+    // (a dashed line has places left empty, where it could not be read: an unseen line of all its values, rnameAll, is read instead, its symbol written with the value)
+    ...Object.fromEntries(Object.keys(STUFF).filter((id) => STUFF[id].dashed).map((id) => [`r${id}All`, { window: 1e6, range: 26, read: (value) => (id === READ.stuff && Number.isFinite(value) ? `${STUFF[id].mark} ${plain(10 ** (value - 10))} Ω·m` : '') }])),
   },
   menus: {
     vars: [
@@ -123,13 +141,13 @@ export default {
       { id: 'closed', label: '스위치 닫기', kind: 'toggle', when: onDope },
       { id: 'stuff', label: '물질', kind: 'choice', value: 'copper', when: onBand, options: Object.keys(STUFF).map((id) => ({ id, label: `${STUFF[id].name} (${STUFF[id].kind})` })) },
       { id: 'atoms', label: '원자의 수', kind: 'slider', min: 1, max: MOST, step: 1, value: 1, unit: '개', when: onBand },
-      { id: 'temp', label: '온도', kind: 'slider', min: COLD, max: HOT, step: 20, value: ROOM, unit: 'K', advanced: true, when: onBand },
+      { id: 'temp', label: '온도', kind: 'slider', min: COLD, max: (v) => topOf(v.stuff), step: 20, value: ROOM, unit: 'K', advanced: true, when: onBand },
       { id: 'pace', label: '쌓는 빠르기', kind: 'choice', value: 'mid', when: onBand, options: [{ id: 'slow', label: '1초에 2개' }, { id: 'mid', label: '1초에 20개' }, { id: 'fast', label: '1초에 100개' }] },
     ],
     graph: [
       { id: 'rhoTemp', label: '비저항–온도', kind: 'graph', x: '온도(K)', xUnit: 'K', span: [0, HOT + 100], marks: [200, 400, 600, 800, 1000].map((at) => [at, String(at)]), advanced: true, when: onBand,
         plots: [{ y: '비저항(Ω·m)', floor: true, marks: [[2, '10¯⁸'], [6, '10¯⁴'], [10, '1'], [14, '10⁴'], [18, '10⁸'], [22, '10¹²']],
-          lines: [...Object.keys(STUFF).map((id) => ({ trace: `r${id}`, color: INKS[id], name: STUFF[id].name })), { trace: 'rnow', color: '#e3c26b', dots: true }] }] },
+          lines: [...Object.keys(STUFF).map((id) => ({ trace: `r${id}`, color: INKS[id], name: STUFF[id].mark })), ...Object.keys(STUFF).filter((id) => STUFF[id].dashed).map((id) => ({ trace: `r${id}All`, color: 'rgba(0,0,0,0)' })), { trace: 'rnow', color: '#e3c26b', dots: true }] }] },
       { id: 'voltFreq', label: '작동 전압–진동수', kind: 'graph', x: '빛의 진동수(f)', xUnit: '×10¹⁴ Hz', span: [0, 8], when: onLed,
         plots: [{ y: '작동 전압', dots: true, floor: true, lines: [{ trace: 'v0', color: 'rgba(0,0,0,0)' }, ...Object.keys(LEDS).map((id) => ({ trace: `v${id}`, color: `#${(id === 'ir' ? 0xc98a8a : LEDS[id].tint).toString(16)}` }))] }] },
     ],
@@ -232,11 +250,11 @@ export default {
     // The lamp's battery gives VOLT through the lamp (OHM) and the full plate (as wide and long as it is drawn, a
     // centimetre to a unit, and a millimetre thick).
     // (advanced) The plate is brought to a temperature: in silicon and diamond the heat lifts electrons over the gap
-    // into the upper band (pairs(): drawn two more for each tenfold, from 10^10 in a m³), in copper the atoms shake
+    // into the upper band (pairs(): drawn two more for each tenfold, from 10^10 in a m³), in a metal the atoms shake
     // more; resist() gives what comes of it. tried: for each material, what it resisted at the temperatures it has been at
     // (all of those on the way, when the temperature is changed). last: what was kept last; still: nothing is kept (while all is put back).
     const VOLT = 3, OHM = 10;
-    const count = () => ctx.values.atoms, whole = () => count() === MOST, stuff = () => STUFF[ctx.values.stuff], temp = () => (ctx.advanced ? ctx.values.temp : ROOM);
+    const count = () => ctx.values.atoms, whole = () => count() === MOST, stuff = () => STUFF[ctx.values.stuff], temp = () => (ctx.advanced ? Math.min(ctx.values.temp, topOf(ctx.values.stuff)) : ROOM);
     const current = () => VOLT / (OHM + resist(ctx.values.stuff, temp()) * (PLATE.w / 100) / (PLATE.long / 100 * 0.001));   // (A)
     const pairs = () => (ctx.advanced && whole() && stuff().gap ? Math.max(0, Math.min(40, Math.round(2 * (Math.log10(lifted(ctx.values.stuff, temp())) - 10)))) : 0);
     const tried = {}, risen = new Map();   // (risen: when each pair on the board began to rise)
@@ -254,7 +272,11 @@ export default {
       for (const one of Object.keys(STUFF)) {
         const trace = ctx.traces[`r${one}`];
         trace.clear();
-        for (const at of TEMPS) trace.add(at, tried[one] && tried[one].has(at) ? place(tried[one].get(at)) : NaN);
+        TEMPS.forEach((at, k) => trace.add(at, tried[one] && tried[one].has(at) && !(STUFF[one].dashed && k % 4 === 3) ? place(tried[one].get(at)) : NaN));   // (a dashed line: every fourth place left empty)
+        if (!STUFF[one].dashed) continue;
+        const whole = ctx.traces[`r${one}All`];
+        whole.clear();
+        for (const at of TEMPS) whole.add(at, tried[one] && tried[one].has(at) ? place(tried[one].get(at)) : NaN);
       }
       ctx.traces.rnow.clear();
       for (const at of TEMPS) ctx.traces.rnow.add(at, on && at === kelvin ? place(resist(id, kelvin)) : NaN);
@@ -288,7 +310,7 @@ export default {
       still = false; state.due = 0; note(); paint(); mark(); moved = true;   // (a plate still full, its number of atoms locked, is written as it now is)
     }
 
-    // the board: a line for each level (two electrons on each that is filled, while they are few enough to be seen); the names of the bands once the plate is full
+    // the board: a line for each level (the electrons it holds as dots, while they are few enough to be seen); the names of the bands once the plate is full
     function paint() {
       const px = FACE.px, W = sheet.image.width, H = sheet.image.height, X = (x) => (x + FACE.w / 2) * px, Y = (e) => H - (0.35 + e * EV) * px, one = stuff(), n = count();
       rising = false; if (!whole()) risen.clear();
@@ -297,18 +319,45 @@ export default {
       ink.beginPath(); ink.moveTo(X(-2.3), Y(-0.3)); ink.lineTo(X(-2.3), Y(10.4)); ink.stroke();
       ink.beginPath(); ink.moveTo(X(-2.3), Y(10.75)); ink.lineTo(X(-2.4), Y(10.35)); ink.lineTo(X(-2.2), Y(10.35)); ink.fill();
       ink.font = '26px Georgia, serif'; ink.textAlign = 'left'; ink.textBaseline = 'middle'; ink.fillText('에너지', X(-2.15), Y(10.6));
-      const left = X(-1.9), right = X(0.9), thick = n > 200 ? 1 : n > 60 ? 1.5 : n > 16 ? 2.2 : 3.5;
-      for (const level of levelsOf(ctx.values.stuff, n)) {
+      // (the lines grow thinner as they grow more, smoothly, so that how much of the board they cover never jumps)
+      const left = X(-1.9), right = X(0.9), thick = Math.max(1, Math.min(3.5, 3.5 * Math.sqrt(16 / n)));
+      // (where the lines come closer than 3 pixels they would show stripes, like levels of their own, as their spacing
+      // beats against the pixels: there each band is two sheets, the filled part and the empty, each as dense as its
+      // lines would be. Both bands turn to sheets together, when the closer of their lines are under 3 pixels apart;
+      // the filled sheets end where the electrons end, at one height for both bands, and keep within their band)
+      const levels = levelsOf(ctx.values.stuff, n);
+      const halves = one.at.map((mid, band) => 2 * one.reach[band] * Math.cos(Math.PI / (n + 1)));   // (half the width of each band, eV)
+      const steps = halves.map((half) => (n > 1 ? (Y(0) - Y(2 * half)) / (n - 1) : Infinity)), sheets = Math.min(...steps) < 3;   // (between two lines, px)
+      if (sheets) {
+        const filled = levels.filter((level) => level.full), empty = levels.filter((level) => !level.full);
+        const edge = Y(empty.length ? (filled[filled.length - 1].e + empty[0].e) / 2 : Infinity);   // (where the filled levels end)
+        one.at.forEach((mid, band) => {
+          const top = Y(mid + halves[band]), bottom = Y(mid - halves[band]);
+          for (const full of [true, false]) {
+            const from = Math.round(full ? Math.max(top, edge) : top), to = Math.round(full ? bottom : Math.min(bottom, edge));   // (on whole pixels: no seam where two sheets meet)
+            if (to <= from) continue;
+            ink.globalAlpha = Math.min(1, (full ? thick : thick * 0.8) / steps[band]); ink.fillStyle = full ? FULL : BARE;
+            ink.fillRect(left, from, right - left, to - from);
+          }
+        });
+        ink.globalAlpha = 1;
+      }
+      if (!sheets) for (const level of levels) {
         const y = Y(level.e);
         ink.strokeStyle = level.full ? FULL : BARE; ink.lineWidth = level.full ? thick : thick * 0.8; ink.beginPath(); ink.moveTo(left, y); ink.lineTo(right, y); ink.stroke();
-        if (level.full && n <= 8) { ink.fillStyle = '#dcebff'; for (const dx of [-0.16, 0.16]) { ink.beginPath(); ink.arc((left + right) / 2 + dx * px, y, 7, 0, Math.PI * 2); ink.fill(); } }
+        if (level.full && n <= 8) { ink.fillStyle = '#dcebff'; for (const dx of [-0.16, 0.16].slice(0, level.held)) { ink.beginPath(); ink.arc((left + right) / 2 + dx * px, y, 7, 0, Math.PI * 2); ink.fill(); } }
       }
       if (whole()) {
         const spans = one.at.map((mid, band) => [mid - 2 * one.reach[band], mid + 2 * one.reach[band]]);
-        ink.strokeStyle = '#dfe6f5'; ink.lineWidth = 2; for (const [lo, hi] of spans) ink.strokeRect(left, Y(hi), right - left, Y(lo) - Y(hi));
-        ink.fillStyle = '#f3eedf'; ink.fillText('전도띠', X(1.05), Y((spans[1][0] + spans[1][1]) / 2 + (one.gap ? 0 : 0.6))); ink.fillText('원자가 띠', X(1.05), Y((spans[0][0] + spans[0][1]) / 2 - (one.gap ? 0 : 0.6)));
+        ink.strokeStyle = '#dfe6f5'; ink.lineWidth = 2;
+        if (one.why === 'part') { ink.strokeRect(left, Y(spans[1][1]), right - left, Y(spans[0][0]) - Y(spans[1][1])); ink.beginPath(); ink.moveTo(left, Y(spans[0][1])); ink.lineTo(right, Y(spans[0][1])); ink.stroke(); }   // (bands that touch: one rim, and one line where they meet)
+        else for (const [lo, hi] of spans) ink.strokeRect(left, Y(hi), right - left, Y(lo) - Y(hi));
+        // (the names stand aside from the middle of their bands where something else is written there: the overlap, or how far the lower band is filled)
+        const top = Math.max(...levels.filter((level) => level.full).map((level) => level.e));
+        ink.fillStyle = '#f3eedf'; ink.fillText('전도띠', X(1.05), Y((spans[1][0] + spans[1][1]) / 2 + (one.why === 'over' ? 0.6 : 0))); ink.fillText('원자가 띠', X(1.05), Y((spans[0][0] + spans[0][1]) / 2 - (one.why ? 0.6 : 0)));
         ink.fillStyle = '#aab2c5'; ink.font = '22px Georgia, serif';
-        ink.fillText(!one.gap ? '두 띠가 겹침' : ctx.values.numbers ? `띠 간격 ${one.gap.toFixed(2)} eV` : '띠 간격', X(1.05), Y((spans[0][1] + spans[1][0]) / 2));
+        if (one.why === 'part') ink.fillText('일부만 채워짐', X(1.05), Y(top + 0.3));
+        else ink.fillText(one.why === 'over' ? '두 띠가 겹침' : ctx.values.numbers ? `띠 간격 ${one.gap.toFixed(2)} eV` : '띠 간격', X(1.05), Y((spans[0][1] + spans[1][0]) / 2));
         // (advanced) the electrons the heat has lifted: each a dot that rises from the lower band, leaving an empty ring there
         const some = pairs(), now = performance.now();
         for (const k of [...risen.keys()]) if (k >= some) risen.delete(k);
@@ -347,7 +396,9 @@ export default {
       move(r) {
         if (!r.intersectPlane(plane, hit)) return;
         if (grab.kind === 'heat') {   // (250 K for each unit of the bench it is pulled)
-          const to = Math.max(COLD, Math.min(HOT, Math.round((grab.from + (hit.x - grab.start.x + hit.y - grab.start.y) * 250) / 20) * 20));
+          const want = Math.round((grab.from + (hit.x - grab.start.x + hit.y - grab.start.y) * 250) / 20) * 20, one = stuff(), to = Math.max(COLD, Math.min(topOf(ctx.values.stuff), want));
+          if (one.melt && want > to) { say(`${one.name}은 ${one.melt} K에서 녹음`, heater.position.x, 0.85, HEAT.z); grab.melting = true; }   // (said while it is pulled past the highest)
+          else if (grab.melting) { tip.show(false); grab.melting = false; moved = true; }
           if (to !== ctx.values.temp) ctx.set('temp', to);
           return;
         }
@@ -380,9 +431,9 @@ export default {
       labels.lamp.write(all ? (lit > 0.05 ? '<b>불빛 켜짐</b>' : '불빛 꺼짐') : tall() ? '측정기' : '전기 전도성 측정기'); labels.lamp.show(true);   // (short, where the screen is narrow)
       labels.list.show(v.numbers);
       if (v.numbers) {
-        const lines = [`<b>${one.name}</b> (${one.kind}) 원자 ${n}개`, n === 1 ? '준위 하나에 전자 2개까지' : `준위 하나가 <b>${n}개</b>로 갈라짐`, `전자 ${2 * n}개가 아래 준위부터 채움`];
+        const lines = [`<b>${one.name}</b> (${one.kind}) 원자 ${n}개`, n === 1 ? '준위 하나에 전자 2개까지' : `준위 하나가 <b>${n}개</b>로 갈라짐`, `전자 ${one.outer * n}개가 아래 준위부터 채움`];
         if (all && ctx.advanced) lines.push(`온도(T) <b>${temp()} K</b>`, !one.gap ? '온도가 오르면 원자의 진동이 커져 전자의 이동을 방해함' : `전도띠로 올라간 전자 <b>${lifted(v.stuff, temp()) >= 1e6 ? `1 cm³에 ${power(lifted(v.stuff, temp()) / 1e6)}개` : '거의 없음'}</b>`);
-        if (all) lines.push(one.gap ? `띠 간격 <b>${one.gap.toFixed(2)} eV</b>` : '띠 간격 없음 (두 띠가 겹침)', `비저항 <b>${power(resist(v.stuff, temp()))} Ω·m</b>`, `측정기의 전류 <b>${current() >= 0.005 ? `${current().toFixed(2)} A` : `${power(current())} A`}</b>`);   // (below 0.005 A two decimals would write 0.00)
+        if (all) lines.push(one.gap ? `띠 간격 <b>${one.gap.toFixed(2)} eV</b>` : one.why === 'part' ? '띠 간격 없음 (원자가 띠의 일부만 채워짐)' : '띠 간격 없음 (두 띠가 겹침)', `비저항 <b>${power(resist(v.stuff, temp()))} Ω·m</b>`, `측정기의 전류 <b>${current() >= 0.005 ? `${current().toFixed(2)} A` : `${power(current())} A`}</b>`);   // (below 0.005 A two decimals would write 0.00)
         labels.list.write(lines.join('<br>'));
         if (tall()) spots.list.set(FACE.x, FACE.hi + 0.25, FACE.z); else spots.list.set(FACE.x + (ctx.advanced ? 5.4 : 4.7), 3.6, FACE.z);
       }
@@ -394,7 +445,11 @@ export default {
       handles: bandTool.handles, start: bandTool.start, move: bandTool.move, end: bandTool.end,
       enter() { rig.visible = true; paint(); paintGauge(); mark(); },
       leave() { rig.visible = false; for (const label of Object.values(labels)) label.show(false); },
-      changed(id) { if (id === 'temp') paintGauge(); else note(); paint(); mark(); },
+      changed(id) {
+        if (id === 'stuff' && ctx.values.temp > topOf(ctx.values.stuff)) ctx.set('temp', topOf(ctx.values.stuff));   // (to a material that would melt there: brought down to its highest, even when the temperature is locked)
+        if (id === 'temp') paintGauge(); else note();
+        paint(); mark();
+      },
       play(on) { if (on && !barred()) { state.due = 0; if (whole()) { shuffle(); ctx.set('atoms', 1); } } },   // (played again when the plate is full: from one atom anew)
       tick: advance, toStart, draw, numbers: paint, mode() { paint(); paintGauge(); mark(); },
     };
