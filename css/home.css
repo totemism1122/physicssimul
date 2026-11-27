@@ -4,8 +4,9 @@
 /* ---------- first screen ---------- */
 .first { --u: min(calc(100vw / 1920), calc(100vh / 1080)); }
 @supports (height: 100dvh) { .first { --u: min(calc(100vw / 1920), calc(100dvh / 1080)); } }
-.first-in { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: calc(26 * var(--u)); }
-.logo { margin: 0 0 calc(133 * var(--u)); font: 400 calc(133 * var(--u)) / 1 var(--title); letter-spacing: 0.02em; }
+/* the title and the cards stand in the middle of the room over the credit, which keeps to the foot of the screen */
+.first-in { min-height: 100%; display: flex; flex-direction: column; align-items: center; padding-bottom: calc(22 * var(--u) + env(safe-area-inset-bottom, 0px)); }
+.logo { margin: auto 0 calc(133 * var(--u)); font: 400 calc(133 * var(--u)) / 1 var(--title); letter-spacing: 0.02em; }
 .subjects { display: flex; gap: calc(78 * var(--u)); }
 .subject { display: flex; flex-direction: column; align-items: center; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .busts { position: relative; display: block; width: calc(432 * var(--u)); aspect-ratio: 432 / 390; overflow: hidden;
@@ -16,13 +17,21 @@
 .subject-name { margin-top: calc(26 * var(--u)); font-size: max(13px, calc(38 * var(--u))); font-weight: 700; line-height: 1.4; letter-spacing: 0.01em; }
 .subject.pressed .busts { transform: scale(1.05); }
 @media (hover: hover) { .subject:hover .busts { transform: scale(1.05); } }
+.credit { margin-top: auto; padding-top: calc(30 * var(--u)); text-align: center; font-size: max(9px, calc(17 * var(--u))); line-height: 1.65; color: var(--ink-soft); word-break: keep-all; }   /* (9px: on a phone held sideways) */
+.credit p { margin: 0; }
+.credit i { font-style: normal; }
+.credit a { text-decoration: underline; text-decoration-color: rgba(243, 238, 223, 0.35); text-underline-offset: 0.2em; }
 
 @media (max-aspect-ratio: 4/5) {   /* tall screens: three horizontal strips */
-  .first { --u: min(calc(100vw / 360), calc(100vh / 660)); --spare: calc(100vh - 660 * var(--u)); }
-  @supports (height: 100dvh) { .first { --u: min(calc(100vw / 360), calc(100dvh / 660)); --spare: calc(100dvh - 660 * var(--u)); } }
-  /* on a 360 x 660 screen this fills the height exactly; any spare height is shared out between the rows */
-  .first-in { padding: calc(42 * var(--u)) 0 calc(25 * var(--u)); }
+  /* (--credit: the room kept for the credit at the foot. Where the screen is not tall enough for it as well, the page is a little longer than the screen and is slid up to read it) */
+  .first { --u: min(calc(100vw / 360), calc(100vh / 660)); --credit: calc(58 * var(--u)); --spare: max(0px, calc(100vh - 660 * var(--u) - var(--credit))); }
+  @supports (height: 100dvh) { .first { --u: min(calc(100vw / 360), calc(100dvh / 660)); --spare: max(0px, calc(100dvh - 660 * var(--u) - var(--credit))); } }
+  /* on a 360 x 660 screen the title and the cards fill the height exactly; any spare height left by the credit is shared out between the rows */
+  .first-in { padding: calc(42 * var(--u)) 0 calc(14 * var(--u) + env(safe-area-inset-bottom, 0px)); }
   .logo { margin: 0 0 calc(49 * var(--u) + var(--spare) / 8); font-size: calc(60 * var(--u)); }
+  .credit { width: calc(316 * var(--u)); padding-top: calc(16 * var(--u)); font-size: max(8px, calc(8.5 * var(--u))); line-height: 1.55; }
+  .credit span { display: block; }
+  .credit i { display: none; }
   .subjects { flex-direction: column; gap: calc(35 * var(--u) + var(--spare) / 4); }
   .subject { flex-direction: row; align-items: flex-end; justify-content: space-between; width: calc(316 * var(--u));
     border-bottom: 1px solid rgba(243, 238, 223, 0.45); }

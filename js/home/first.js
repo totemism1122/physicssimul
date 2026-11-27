@@ -17,6 +17,14 @@ function bustImage([name, left, top, width]) {
   return `<img ${source} alt="" draggable="false" style="left:${left}%;top:${top}%;width:${width}%">`;
 }
 
+// Whose work this is and how it may be used, at the foot of the first screen: two lines on a wide screen, three on
+// a tall one (the two parts of the second line each on a line of its own there, the dot between them left out).
+const CREDIT = `
+      <footer class="credit">
+        <p>© 2026 세종시 물리교사 장승현 · <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ko" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a></p>
+        <p><span>2022 개정 교육과정 성취기준에 맞춰 AI 도구를 활용해 만들었습니다</span><i> · </i><span>학생의 정보를 수집하지 않습니다 · 문의 mam0944@naver.com</span></p>
+      </footer>`;
+
 export function firstScreen() {
   const el = document.createElement('section');
   el.className = 'first';
@@ -30,6 +38,7 @@ export function firstScreen() {
           <span class="subject-name">${subject.name}</span>
         </a>`).join('')}
       </nav>
+      ${CREDIT}
     </div>`;
 
   for (const card of el.querySelectorAll('.subject')) {
