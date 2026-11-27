@@ -71,7 +71,9 @@ export function createView3D(T, canvas, ctx, cam = {}) {
   // ---------- quality: fewer pixels and fewer shadows on slower devices ----------
   const coarse = window.matchMedia('(pointer: coarse)').matches;
   const weak = navigator.deviceMemory ? navigator.deviceMemory <= 4 : (navigator.hardwareConcurrency || 8) <= 4;
-  let level = coarse && weak ? 1 : 0, onQuality = () => {}, slow = 0, lastRender = 0;
+  let level = coarse && weak ? 1 : 0, onQuality = () => {}, slow = 0, lastRender = 0, lower = false;
+  // (setting the pixel ratio empties the picture at once: it is done only just before a frame is drawn, never after,
+  // or the empty picture would be shown until the next frame)
   function applyQuality() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, [2, 1.5, 1][level]));
     onQuality(level); sized = ''; dirty = true;
@@ -151,11 +153,12 @@ export function createView3D(T, canvas, ctx, cam = {}) {
   function frame(now) {
     raf = requestAnimationFrame(frame);
     const dt = Math.min(0.05, Math.max(0.004, (now - last) / 1000)); last = now;
+    if (lower) { lower = false; applyQuality(); }   // (this frame is then drawn: applyQuality marks it to be)
     if (!step(dt)) { lastRender = 0; return; }
     // a run of slow frames while the picture is changing steps the quality down once
     if (lastRender && now - lastRender > 34) slow++; else slow = Math.max(0, slow - 1);
     lastRender = now;
-    if (slow > 45 && level < 2) { level++; slow = 0; applyQuality(); }
+    if (slow > 45 && level < 2) { level++; slow = 0; lower = true; }   // (lowered at the start of the next frame)
   }
 
   return {

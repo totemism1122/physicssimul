@@ -186,6 +186,8 @@ export default {
     const tipSpot = new T.Vector3(), tip = view.label(tipSpot);   // a word beside what is handled
     let moved = true, tipTime = 0, framed = false, grab = null, running = false;   // (running: the clock runs)
     function say(text, x, y, z, seconds = 0) { tip.write(text); tipSpot.set(x, y, z); tip.show(true); tipTime = seconds; moved = true; }
+    // a wire drawn anew: its points written over the old ones (a wire keeps the number of its points)
+    function reshape(line, points) { const at = line.geometry.attributes.position; points.forEach((p, k) => at.setXYZ(k, p.x, p.y, p.z)); at.needsUpdate = true; }
     const tall = () => window.matchMedia('(max-aspect-ratio: 4/5)').matches;
 
     // ====================================== the bands ======================================
@@ -414,7 +416,7 @@ export default {
       if (rising) paint();
       atomInk.color.setHex(one.tint); heap.count = n;
       heater.visible = ctx.advanced; heater.position.x = tall() ? HEAT.x : HEAT.x - 0.7; plateInk.emissive.setRGB(0.45 * hot, 0.07 * hot, 0);
-      heatWire.geometry.setFromPoints([way.set(0.75, 0.2, 0).clone(), way.set(1.2, 0.06, 0.8).clone(), way.copy(corner).sub(heater.position).clone()]);
+      reshape(heatWire, [way.set(0.75, 0.2, 0).clone(), way.set(1.2, 0.06, 0.8).clone(), way.copy(corner).sub(heater.position).clone()]);
       spare.visible = !all && !adding; carried.visible = Boolean(adding);
       if (adding) carried.position.copy(grab.at);
       // the tester: its rods on the sides of the full plate, or lying by it
@@ -713,7 +715,7 @@ export default {
       });
       // the heater, the switch, the wires, and the writing
       stove2.group.visible = adv; stove2.group.position.set(lattice.position.x + STOVE2.x, 0, STOVE2.z);
-      stoveWire.visible = adv; stoveWire.geometry.setFromPoints([way.set(stove2.group.position.x + 0.75, 0.2, STOVE2.z).clone(), way.set(lattice.position.x + 1.6, 0.06, STOVE2.z - 0.3).clone(), way.set(lattice.position.x + 2.3, 0.12, LAT.z).clone()]);
+      stoveWire.visible = adv; reshape(stoveWire, [way.set(stove2.group.position.x + 0.75, 0.2, STOVE2.z).clone(), way.set(lattice.position.x + 1.6, 0.06, STOVE2.z - 0.3).clone(), way.set(lattice.position.x + 2.3, 0.12, LAT.z).clone()]);
       lever.rotation.z = on ? 0 : 0.6;
       [[-2.95, CELL2.x - 0.9, CELL2.y], [2.95, KEY.x + 0.45, 0.2]].forEach(([x, toX, toY], k) => { const line = leads[k].geometry.attributes.position, foot = way.set(lattice.position.x + x, LAT.lo, LAT.z + 0.1); line.setXYZ(0, foot.x, foot.y, foot.z); line.setXYZ(1, foot.x, 0.15, CELL2.z); line.setXYZ(2, toX, toY, CELL2.z); line.needsUpdate = true; });
       { const line = leads[2].geometry.attributes.position; line.setXYZ(0, KEY.x - 0.45, 0.2, KEY.z); line.setXYZ(1, (KEY.x + CELL2.x) / 2 + 0.2, 0.12, KEY.z); line.setXYZ(2, CELL2.x + 0.95, CELL2.y, CELL2.z); line.needsUpdate = true; }
@@ -1021,8 +1023,8 @@ export default {
       // the supply, the wires (which post each is on), the diode and the rack
       knob.rotation.z = 2.3 - volts() / VOLT_MAX * 4.6;
       const out = fore ? POST.plus : POST.minus, back = fore ? POST.minus : POST.plus;
-      leadOut.geometry.setFromPoints([out, way.set(SUP + 1.15, 0.9, 0.25).clone(), way.set(SUP + 1.3, 0.2, 0.25).clone(), way.set(OHM_AT - 0.4, 0.2, 0.25).clone()]);
-      leadBack.geometry.setFromPoints([way.set(LAMP.x + 0.18, 0.3, LAMP.z).clone(), way.set(LAMP.x + 0.6, 0.12, -0.5).clone(), way.set(SUP + 1.2, 0.12, -0.8).clone(), way.set(back.x, 0.95, -0.6).clone(), back]);
+      reshape(leadOut, [out, way.set(SUP + 1.15, 0.9, 0.25).clone(), way.set(SUP + 1.3, 0.2, 0.25).clone(), way.set(OHM_AT - 0.4, 0.2, 0.25).clone()]);
+      reshape(leadBack, [way.set(LAMP.x + 0.18, 0.3, LAMP.z).clone(), way.set(LAMP.x + 0.6, 0.12, -0.5).clone(), way.set(SUP + 1.2, 0.12, -0.8).clone(), way.set(back.x, 0.95, -0.6).clone(), back]);
       headInk.color.set(one.dome || one.tint).multiplyScalar(one.dome ? 1 : 0.6 + 0.4 * shine); headInk.emissive.set(one.tint).multiplyScalar(shine * faint);
       haloInk.color.set(one.tint); haloInk.opacity = 0.5 * shine * faint; halo.scale.setScalar(0.7 + 0.9 * shine); halo.visible = shine > 0.01;
       for (const spare of Object.values(spares)) {
@@ -1032,7 +1034,7 @@ export default {
         if (mine) { way.copy(carried3.near ? home3 : carried3.at).sub(row3.position).divideScalar(size); spare.group.position.copy(way); if (carried3.near) spare.group.position.y -= 0.3; } else spare.group.position.copy(spare.rest);
       }
       onRow(LAMP.x, 0.95, LAMP.z, way);
-      zoom.forEach((line, k) => line.geometry.setFromPoints([way.clone(), hit.set(junction.position.x + (k ? 2.9 : -2.9), JUN.lo - 0.1, JUN.z + 0.05).clone()]));
+      zoom.forEach((line, k) => reshape(line, [way.clone(), hit.set(junction.position.x + (k ? 2.9 : -2.9), JUN.lo - 0.1, JUN.z + 0.05).clone()]));
       // the writing
       spots3.p.set(junction.position.x - (adv ? 1.85 : 1.45), JUN.hi + 0.2, JUN.z); spots3.n.set(junction.position.x + (adv ? 1.85 : 1.45), JUN.hi + 0.2, JUN.z);   // (advanced: apart, with the name of the strip between them)
       spots3.left.set(junction.position.x - 3.3, MID3, JUN.z); spots3.right.set(junction.position.x + 3.3, MID3, JUN.z);
