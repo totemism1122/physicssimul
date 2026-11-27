@@ -21,15 +21,16 @@
 .credit p { margin: 0; }
 .credit i { font-style: normal; }
 .credit a { text-decoration: underline; text-decoration-color: rgba(243, 238, 223, 0.35); text-underline-offset: 0.2em; }
+@media (pointer: coarse) { .credit { font-size: 9px; } }   /* a tablet, or a phone held sideways: no larger than on a phone (a wide screen worked by touch is held close) */
 
 @media (max-aspect-ratio: 4/5) {   /* tall screens: three horizontal strips */
-  /* (--credit: the room kept for the credit at the foot. Where the screen is not tall enough for it as well, the page is a little longer than the screen and is slid up to read it) */
-  .first { --u: min(calc(100vw / 360), calc(100vh / 660)); --credit: calc(58 * var(--u)); --spare: max(0px, calc(100vh - 660 * var(--u) - var(--credit))); }
-  @supports (height: 100dvh) { .first { --u: min(calc(100vw / 360), calc(100dvh / 660)); --spare: max(0px, calc(100dvh - 660 * var(--u) - var(--credit))); } }
-  /* on a 360 x 660 screen the title and the cards fill the height exactly; any spare height left by the credit is shared out between the rows */
+  /* the sheet is 360 x 718: the title and the cards as first drawn (360 x 660) and 58 more for the credit at the foot, so that all of it is on screen whatever the shape of the screen */
+  .first { --u: min(calc(100vw / 360), calc(100vh / 718)); --spare: calc(100vh - 718 * var(--u)); }
+  @supports (height: 100dvh) { .first { --u: min(calc(100vw / 360), calc(100dvh / 718)); --spare: calc(100dvh - 718 * var(--u)); } }
+  /* on a 360 x 718 screen this fills the height exactly; any spare height is shared out between the rows */
   .first-in { padding: calc(42 * var(--u)) 0 calc(14 * var(--u) + env(safe-area-inset-bottom, 0px)); }
   .logo { margin: 0 0 calc(49 * var(--u) + var(--spare) / 8); font-size: calc(60 * var(--u)); }
-  .credit { width: calc(316 * var(--u)); padding-top: calc(16 * var(--u)); font-size: max(8px, calc(8.5 * var(--u))); line-height: 1.55; }
+  .credit { width: calc(316 * var(--u)); padding-top: calc(16 * var(--u)); font-size: clamp(8px, calc(8.5 * var(--u)), 9px); line-height: 1.55; }   /* (9px at most: on an upright tablet the unit is large) */
   .credit span { display: block; }
   .credit i { display: none; }
   .subjects { flex-direction: column; gap: calc(35 * var(--u) + var(--spare) / 4); }
